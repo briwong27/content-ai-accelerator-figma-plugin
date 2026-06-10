@@ -54,11 +54,14 @@ function expandText(text: string, lang: StressLang): string {
   return expandTextFI(text);
 }
 
-function stubTranslate(text: string, lang: TranslateLang): string {
-  const labels: Record<TranslateLang, string> = {
-    es: 'ES', fr: 'FR', de: 'DE', ja: 'JA',
-  };
-  return `[${labels[lang]}] ${text}`;
+async function translateText(text: string, lang: TranslateLang): Promise<string> {
+  if (!text.trim()) return text;
+  const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=en|${lang}`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Translation request failed: ${res.status}`);
+  const data = await res.json() as { responseData: { translatedText: string }; responseStatus: number };
+  if (data.responseStatus !== 200) throw new Error(`Translation error: ${data.responseStatus}`);
+  return data.responseData.translatedText;
 }
 
 // --- Node traversal ---
@@ -137,7 +140,7 @@ async function applyLocalization(msg: ApplyMessage): Promise<void> {
       if (msg.mode === 'stress') {
         node.characters = expandText(node.characters, msg.lang as StressLang);
       } else {
-        node.characters = stubTranslate(node.characters, msg.lang as TranslateLang);
+        node.characters = await translateText(node.characters, msg.lang as TranslateLang);
       }
       successCount++;
     } catch (err) {

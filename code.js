@@ -34,11 +34,17 @@ function expandText(text, lang) {
         return expandTextDE(text);
     return expandTextFI(text);
 }
-function stubTranslate(text, lang) {
-    const labels = {
-        es: 'ES', fr: 'FR', de: 'DE', ja: 'JA',
-    };
-    return `[${labels[lang]}] ${text}`;
+async function translateText(text, lang) {
+    if (!text.trim())
+        return text;
+    const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=en|${lang}`;
+    const res = await fetch(url);
+    if (!res.ok)
+        throw new Error(`Translation request failed: ${res.status}`);
+    const data = await res.json();
+    if (data.responseStatus !== 200)
+        throw new Error(`Translation error: ${data.responseStatus}`);
+    return data.responseData.translatedText;
 }
 // --- Node traversal ---
 function collectTextNodes(node) {
@@ -106,7 +112,7 @@ async function applyLocalization(msg) {
                 node.characters = expandText(node.characters, msg.lang);
             }
             else {
-                node.characters = stubTranslate(node.characters, msg.lang);
+                node.characters = await translateText(node.characters, msg.lang);
             }
             successCount++;
         }
