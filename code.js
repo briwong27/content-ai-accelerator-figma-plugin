@@ -1,18 +1,61 @@
 "use strict";
 /// <reference path="./node_modules/@figma/plugin-typings/index.d.ts" />
 figma.showUI(__html__, { width: 320, height: 420 });
+function getStyledRuns(node) {
+    const len = node.characters.length;
+    if (len === 0)
+        return [];
+    const runs = [];
+    let start = 0;
+    let curFont = node.getRangeFontName(0, 1);
+    let curSize = node.getRangeFontSize(0, 1);
+    for (let i = 1; i <= len; i++) {
+        const atEnd = i === len;
+        const font = atEnd ? curFont : node.getRangeFontName(i, i + 1);
+        const size = atEnd ? curSize : node.getRangeFontSize(i, i + 1);
+        const changed = font.family !== curFont.family || font.style !== curFont.style || size !== curSize;
+        if (atEnd || changed) {
+            runs.push({ text: node.characters.slice(start, i), fontName: curFont, fontSize: curSize });
+            start = i;
+            curFont = font;
+            curSize = size;
+        }
+    }
+    return runs;
+}
+async function applyStyledRuns(node, runs) {
+    // Load all unique fonts first
+    const seen = new Set();
+    for (const run of runs) {
+        const key = `${run.fontName.family}::${run.fontName.style}`;
+        if (!seen.has(key)) {
+            seen.add(key);
+            await figma.loadFontAsync(run.fontName);
+        }
+    }
+    // Allow height to grow so translated text wraps instead of clipping
+    if (node.textAutoResize === 'NONE') {
+        node.textAutoResize = 'HEIGHT';
+    }
+    // Set full text (resets all styling to uniform)
+    node.characters = runs.map(r => r.text).join('');
+    // Re-apply per-run styles
+    let pos = 0;
+    for (const run of runs) {
+        const end = pos + run.text.length;
+        if (end > pos) {
+            node.setRangeFontName(pos, end, run.fontName);
+            node.setRangeFontSize(pos, end, run.fontSize);
+        }
+        pos = end;
+    }
+}
 // --- Text expansion for stress test ---
 function expandTextDE(text) {
     const suffixes = ['ung', 'keit', 'schaft', 'ierung'];
     return text
         .split(' ')
-        .map((word, i) => {
-        if (word.length === 0)
-            return word;
-        const suffix = suffixes[i % suffixes.length];
-        const padded = word + suffix;
-        return padded;
-    })
+        .map((word, i) => (word.length === 0 ? word : word + suffixes[i % suffixes.length]))
         .join(' ');
 }
 function expandTextFI(text) {
@@ -21,19 +64,14 @@ function expandTextFI(text) {
         .map((word) => {
         if (word.length === 0)
             return word;
-        // repeat vowels to simulate Finnish agglutination
-        return word
-            .split('')
-            .map((ch) => ('aeiouAEIOU'.includes(ch) ? ch + ch : ch))
-            .join('') + 'nen';
+        return word.split('').map((ch) => ('aeiouAEIOU'.includes(ch) ? ch + ch : ch)).join('') + 'nen';
     })
         .join(' ');
 }
 function expandText(text, lang) {
-    if (lang === 'de')
-        return expandTextDE(text);
-    return expandTextFI(text);
+    return lang === 'de' ? expandTextDE(text) : expandTextFI(text);
 }
+// --- Translation ---
 async function translateText(text, lang) {
     if (!text.trim())
         return text;
@@ -56,19 +94,19 @@ function collectTextNodes(node) {
     return [];
 }
 function getScopedNodes(scope) {
-    if (scope === 'selection') {
+    if (scope === 'selection')
         return figma.currentPage.selection.flatMap(collectTextNodes);
-    }
-    if (scope === 'page') {
+    if (scope === 'page')
         return collectTextNodes(figma.currentPage);
-    }
-    // all pages
     return figma.root.children.flatMap(collectTextNodes);
 }
 function saveSnapshot(nodes) {
     const snapshot = {};
     for (const node of nodes) {
-        snapshot[node.id] = node.characters;
+        snapshot[node.id] = {
+            runs: getStyledRuns(node),
+            textAutoResize: node.textAutoResize,
+        };
     }
     figma.root.setPluginData('localization_snapshot', JSON.stringify(snapshot));
 }
@@ -83,19 +121,6 @@ function loadSnapshot() {
         return null;
     }
 }
-// --- Font loading ---
-async function loadAllFonts(node) {
-    const len = node.characters.length;
-    const seen = new Set();
-    for (let i = 0; i < len; i++) {
-        const font = node.getRangeFontName(i, i + 1);
-        const key = `${font.family}::${font.style}`;
-        if (!seen.has(key)) {
-            seen.add(key);
-            await figma.loadFontAsync(font);
-        }
-    }
-}
 // --- Main handlers ---
 async function applyLocalization(msg) {
     const nodes = getScopedNodes(msg.scope);
@@ -107,13 +132,19 @@ async function applyLocalization(msg) {
     let successCount = 0;
     for (const node of nodes) {
         try {
-            await loadAllFonts(node);
-            if (msg.mode === 'stress') {
-                node.characters = expandText(node.characters, msg.lang);
+            const originalRuns = getStyledRuns(node);
+            const translatedRuns = [];
+            for (const run of originalRuns) {
+                let translatedText;
+                if (msg.mode === 'stress') {
+                    translatedText = expandText(run.text, msg.lang);
+                }
+                else {
+                    translatedText = await translateText(run.text, msg.lang);
+                }
+                translatedRuns.push(Object.assign(Object.assign({}, run), { text: translatedText }));
             }
-            else {
-                node.characters = await translateText(node.characters, msg.lang);
-            }
+            await applyStyledRuns(node, translatedRuns);
             successCount++;
         }
         catch (err) {
@@ -129,13 +160,13 @@ async function undoLocalization() {
         return;
     }
     let successCount = 0;
-    for (const [id, originalText] of Object.entries(snapshot)) {
+    for (const [id, nodeSnapshot] of Object.entries(snapshot)) {
         const node = figma.getNodeById(id);
         if (!node || node.type !== 'TEXT')
             continue;
         try {
-            await loadAllFonts(node);
-            node.characters = originalText;
+            node.textAutoResize = nodeSnapshot.textAutoResize;
+            await applyStyledRuns(node, nodeSnapshot.runs);
             successCount++;
         }
         catch (err) {

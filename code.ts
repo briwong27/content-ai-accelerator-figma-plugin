@@ -20,18 +20,79 @@ interface UndoMessage {
 
 type PluginMessage = ApplyMessage | UndoMessage;
 
+// --- Style runs ---
+// A run is a contiguous segment of text where fontName and fontSize are uniform.
+
+interface StyleRun {
+  text: string;
+  fontName: FontName;
+  fontSize: number;
+}
+
+function getStyledRuns(node: TextNode): StyleRun[] {
+  const len = node.characters.length;
+  if (len === 0) return [];
+
+  const runs: StyleRun[] = [];
+  let start = 0;
+  let curFont = node.getRangeFontName(0, 1) as FontName;
+  let curSize = node.getRangeFontSize(0, 1) as number;
+
+  for (let i = 1; i <= len; i++) {
+    const atEnd = i === len;
+    const font = atEnd ? curFont : node.getRangeFontName(i, i + 1) as FontName;
+    const size = atEnd ? curSize : node.getRangeFontSize(i, i + 1) as number;
+    const changed = font.family !== curFont.family || font.style !== curFont.style || size !== curSize;
+
+    if (atEnd || changed) {
+      runs.push({ text: node.characters.slice(start, i), fontName: curFont, fontSize: curSize });
+      start = i;
+      curFont = font;
+      curSize = size;
+    }
+  }
+
+  return runs;
+}
+
+async function applyStyledRuns(node: TextNode, runs: StyleRun[]): Promise<void> {
+  // Load all unique fonts first
+  const seen = new Set<string>();
+  for (const run of runs) {
+    const key = `${run.fontName.family}::${run.fontName.style}`;
+    if (!seen.has(key)) {
+      seen.add(key);
+      await figma.loadFontAsync(run.fontName);
+    }
+  }
+
+  // Allow height to grow so translated text wraps instead of clipping
+  if (node.textAutoResize === 'NONE') {
+    node.textAutoResize = 'HEIGHT';
+  }
+
+  // Set full text (resets all styling to uniform)
+  node.characters = runs.map(r => r.text).join('');
+
+  // Re-apply per-run styles
+  let pos = 0;
+  for (const run of runs) {
+    const end = pos + run.text.length;
+    if (end > pos) {
+      node.setRangeFontName(pos, end, run.fontName);
+      node.setRangeFontSize(pos, end, run.fontSize);
+    }
+    pos = end;
+  }
+}
+
 // --- Text expansion for stress test ---
 
 function expandTextDE(text: string): string {
   const suffixes = ['ung', 'keit', 'schaft', 'ierung'];
   return text
     .split(' ')
-    .map((word, i) => {
-      if (word.length === 0) return word;
-      const suffix = suffixes[i % suffixes.length];
-      const padded = word + suffix;
-      return padded;
-    })
+    .map((word, i) => (word.length === 0 ? word : word + suffixes[i % suffixes.length]))
     .join(' ');
 }
 
@@ -40,19 +101,16 @@ function expandTextFI(text: string): string {
     .split(' ')
     .map((word) => {
       if (word.length === 0) return word;
-      // repeat vowels to simulate Finnish agglutination
-      return word
-        .split('')
-        .map((ch) => ('aeiouAEIOU'.includes(ch) ? ch + ch : ch))
-        .join('') + 'nen';
+      return word.split('').map((ch) => ('aeiouAEIOU'.includes(ch) ? ch + ch : ch)).join('') + 'nen';
     })
     .join(' ');
 }
 
 function expandText(text: string, lang: StressLang): string {
-  if (lang === 'de') return expandTextDE(text);
-  return expandTextFI(text);
+  return lang === 'de' ? expandTextDE(text) : expandTextFI(text);
 }
+
+// --- Translation ---
 
 async function translateText(text: string, lang: TranslateLang): Promise<string> {
   if (!text.trim()) return text;
@@ -75,24 +133,27 @@ function collectTextNodes(node: BaseNode): TextNode[] {
 }
 
 function getScopedNodes(scope: Scope): TextNode[] {
-  if (scope === 'selection') {
-    return figma.currentPage.selection.flatMap(collectTextNodes);
-  }
-  if (scope === 'page') {
-    return collectTextNodes(figma.currentPage);
-  }
-  // all pages
+  if (scope === 'selection') return figma.currentPage.selection.flatMap(collectTextNodes);
+  if (scope === 'page') return collectTextNodes(figma.currentPage);
   return figma.root.children.flatMap(collectTextNodes);
 }
 
 // --- Snapshot for undo ---
 
-type Snapshot = Record<string, string>;
+interface NodeSnapshot {
+  runs: StyleRun[];
+  textAutoResize: TextNode['textAutoResize'];
+}
+
+type Snapshot = Record<string, NodeSnapshot>;
 
 function saveSnapshot(nodes: TextNode[]): void {
   const snapshot: Snapshot = {};
   for (const node of nodes) {
-    snapshot[node.id] = node.characters;
+    snapshot[node.id] = {
+      runs: getStyledRuns(node),
+      textAutoResize: node.textAutoResize,
+    };
   }
   figma.root.setPluginData('localization_snapshot', JSON.stringify(snapshot));
 }
@@ -104,21 +165,6 @@ function loadSnapshot(): Snapshot | null {
     return JSON.parse(raw) as Snapshot;
   } catch {
     return null;
-  }
-}
-
-// --- Font loading ---
-
-async function loadAllFonts(node: TextNode): Promise<void> {
-  const len = node.characters.length;
-  const seen = new Set<string>();
-  for (let i = 0; i < len; i++) {
-    const font = node.getRangeFontName(i, i + 1) as FontName;
-    const key = `${font.family}::${font.style}`;
-    if (!seen.has(key)) {
-      seen.add(key);
-      await figma.loadFontAsync(font);
-    }
   }
 }
 
@@ -136,12 +182,20 @@ async function applyLocalization(msg: ApplyMessage): Promise<void> {
   let successCount = 0;
   for (const node of nodes) {
     try {
-      await loadAllFonts(node);
-      if (msg.mode === 'stress') {
-        node.characters = expandText(node.characters, msg.lang as StressLang);
-      } else {
-        node.characters = await translateText(node.characters, msg.lang as TranslateLang);
+      const originalRuns = getStyledRuns(node);
+      const translatedRuns: StyleRun[] = [];
+
+      for (const run of originalRuns) {
+        let translatedText: string;
+        if (msg.mode === 'stress') {
+          translatedText = expandText(run.text, msg.lang as StressLang);
+        } else {
+          translatedText = await translateText(run.text, msg.lang as TranslateLang);
+        }
+        translatedRuns.push({ ...run, text: translatedText });
       }
+
+      await applyStyledRuns(node, translatedRuns);
       successCount++;
     } catch (err) {
       console.error(`Skipped node ${node.id}:`, err);
@@ -159,12 +213,12 @@ async function undoLocalization(): Promise<void> {
   }
 
   let successCount = 0;
-  for (const [id, originalText] of Object.entries(snapshot)) {
+  for (const [id, nodeSnapshot] of Object.entries(snapshot)) {
     const node = figma.getNodeById(id) as TextNode | null;
     if (!node || node.type !== 'TEXT') continue;
     try {
-      await loadAllFonts(node);
-      node.characters = originalText;
+      node.textAutoResize = nodeSnapshot.textAutoResize;
+      await applyStyledRuns(node, nodeSnapshot.runs);
       successCount++;
     } catch (err) {
       console.error(`Could not restore node ${id}:`, err);
