@@ -1,0 +1,9 @@
+{
+  "compilerOptions": {
+    "target": "ES2017",
+    "lib": ["ES2019"],
+    "strict": true,
+    "noEmitOnError": true
+  },
+  "files": ["code.ts"]
+}
