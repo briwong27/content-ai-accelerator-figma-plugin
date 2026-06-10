@@ -77,6 +77,19 @@ function loadSnapshot() {
         return null;
     }
 }
+// --- Font loading ---
+async function loadAllFonts(node) {
+    const len = node.characters.length;
+    const seen = new Set();
+    for (let i = 0; i < len; i++) {
+        const font = node.getRangeFontName(i, i + 1);
+        const key = `${font.family}::${font.style}`;
+        if (!seen.has(key)) {
+            seen.add(key);
+            await figma.loadFontAsync(font);
+        }
+    }
+}
 // --- Main handlers ---
 async function applyLocalization(msg) {
     const nodes = getScopedNodes(msg.scope);
@@ -88,7 +101,7 @@ async function applyLocalization(msg) {
     let successCount = 0;
     for (const node of nodes) {
         try {
-            await figma.loadFontAsync(node.fontName);
+            await loadAllFonts(node);
             if (msg.mode === 'stress') {
                 node.characters = expandText(node.characters, msg.lang);
             }
@@ -115,7 +128,7 @@ async function undoLocalization() {
         if (!node || node.type !== 'TEXT')
             continue;
         try {
-            await figma.loadFontAsync(node.fontName);
+            await loadAllFonts(node);
             node.characters = originalText;
             successCount++;
         }

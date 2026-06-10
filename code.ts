@@ -104,6 +104,21 @@ function loadSnapshot(): Snapshot | null {
   }
 }
 
+// --- Font loading ---
+
+async function loadAllFonts(node: TextNode): Promise<void> {
+  const len = node.characters.length;
+  const seen = new Set<string>();
+  for (let i = 0; i < len; i++) {
+    const font = node.getRangeFontName(i, i + 1) as FontName;
+    const key = `${font.family}::${font.style}`;
+    if (!seen.has(key)) {
+      seen.add(key);
+      await figma.loadFontAsync(font);
+    }
+  }
+}
+
 // --- Main handlers ---
 
 async function applyLocalization(msg: ApplyMessage): Promise<void> {
@@ -118,7 +133,7 @@ async function applyLocalization(msg: ApplyMessage): Promise<void> {
   let successCount = 0;
   for (const node of nodes) {
     try {
-      await figma.loadFontAsync(node.fontName as FontName);
+      await loadAllFonts(node);
       if (msg.mode === 'stress') {
         node.characters = expandText(node.characters, msg.lang as StressLang);
       } else {
@@ -145,7 +160,7 @@ async function undoLocalization(): Promise<void> {
     const node = figma.getNodeById(id) as TextNode | null;
     if (!node || node.type !== 'TEXT') continue;
     try {
-      await figma.loadFontAsync(node.fontName as FontName);
+      await loadAllFonts(node);
       node.characters = originalText;
       successCount++;
     } catch (err) {
