@@ -3,83 +3,114 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Content Localizer</title>
+  <title>Content Design Toolkit</title>
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
-      font-family: Inter, -apple-system, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
       font-size: 13px;
-      color: #333;
+      color: #1a1a1a;
+      background: #f9f9f8;
+      line-height: 1.6;
+    }
+
+    /* --- Tabs --- */
+    .tab-bar {
+      display: flex;
+      border-bottom: 1px solid #e8e8e8;
+      background: #f9f9f8;
+      padding: 0 16px;
+    }
+
+    .tab-btn {
+      padding: 12px 0;
+      margin-right: 20px;
+      background: none;
+      border: none;
+      border-bottom: 2px solid transparent;
+      font-size: 12px;
+      font-weight: 500;
+      color: #aaa;
+      cursor: pointer;
+      letter-spacing: 0.02em;
+      transition: color 0.15s, border-color 0.15s;
+      margin-bottom: -1px;
+    }
+
+    .tab-btn.active {
+      color: #1a1a1a;
+      border-bottom-color: #1a1a1a;
+    }
+
+    .tab-panel {
+      display: none;
       padding: 16px;
-      background: #fff;
+      overflow-y: auto;
+      height: calc(100vh - 41px);
     }
 
-    h2 {
-      font-size: 14px;
-      font-weight: 600;
-      margin-bottom: 16px;
-      color: #111;
-    }
+    .tab-panel.active { display: block; }
 
-    .section {
-      margin-bottom: 16px;
-    }
+    /* --- Shared --- */
+    .section { margin-bottom: 16px; }
 
-    .section label.group-label {
+    .group-label {
       display: block;
-      font-weight: 600;
-      margin-bottom: 6px;
-      color: #555;
-      text-transform: uppercase;
       font-size: 11px;
-      letter-spacing: 0.5px;
+      font-weight: 500;
+      color: #999;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 8px;
     }
 
     .radio-group {
       display: flex;
-      gap: 8px;
+      gap: 6px;
       flex-wrap: wrap;
     }
 
     .radio-group label {
       display: flex;
       align-items: center;
-      gap: 4px;
+      gap: 5px;
       cursor: pointer;
       padding: 5px 10px;
-      border: 1px solid #ddd;
-      border-radius: 4px;
-      transition: border-color 0.15s;
+      border: 1px solid #d8d8d8;
+      border-radius: 6px;
+      font-size: 12px;
+      color: #444;
+      background: #fff;
+      transition: border-color 0.15s, background 0.15s;
     }
 
-    .radio-group input[type="radio"] {
-      accent-color: #18a0fb;
-    }
+    .radio-group input[type="radio"] { accent-color: #1a1a1a; }
 
     .radio-group label:has(input:checked) {
-      border-color: #18a0fb;
-      background: #f0f8ff;
+      border-color: #1a1a1a;
+      background: #fff;
+      color: #1a1a1a;
+      font-weight: 500;
     }
 
     select {
       width: 100%;
-      padding: 7px 10px;
-      border: 1px solid #ddd;
-      border-radius: 4px;
+      padding: 8px 10px;
+      border: 1px solid #d8d8d8;
+      border-radius: 6px;
       font-size: 13px;
-      color: #333;
+      color: #1a1a1a;
       background: #fff;
       cursor: pointer;
+      font-family: inherit;
     }
 
-    select:focus {
-      outline: none;
-      border-color: #18a0fb;
-    }
+    select:focus { outline: none; border-color: #888; }
 
-    .hidden { display: none; }
+    .hidden { display: none !important; }
 
+    /* --- Buttons --- */
     .button-row {
       display: flex;
       gap: 8px;
@@ -92,77 +123,329 @@
       border: none;
       border-radius: 6px;
       font-size: 13px;
-      font-weight: 600;
+      font-weight: 500;
       cursor: pointer;
+      font-family: inherit;
       transition: opacity 0.15s;
     }
 
-    button:hover { opacity: 0.85; }
+    button:hover { opacity: 0.8; }
+    button:disabled { opacity: 0.35; cursor: not-allowed; }
 
-    #applyBtn {
-      background: #18a0fb;
-      color: #fff;
+    #applyBtn   { background: #1a1a1a; color: #fff; }
+    #undoBtn    { background: #ebebea; color: #444; }
+    #analyzeBtn { background: #1a1a1a; color: #fff; width: 100%; margin-top: 16px; flex: none; }
+
+    /* --- Report results --- */
+    #reportStatus {
+      font-size: 12px;
+      color: #999;
+      margin-top: 12px;
     }
 
-    #undoBtn {
-      background: #f0f0f0;
-      color: #333;
+    #reportError {
+      font-size: 12px;
+      color: #b03a2e;
+      margin-top: 12px;
+      background: #fdf2f2;
+      border: 1px solid #f5c6c6;
+      border-radius: 6px;
+      padding: 8px 10px;
+      line-height: 1.5;
+    }
+
+    #reportResults { margin-top: 16px; }
+
+    .string-block {
+      padding: 14px 0;
+      border-bottom: 1px solid #f0f0f0;
+    }
+
+    .string-block:last-child { border-bottom: none; padding-bottom: 0; }
+
+    .string-text {
+      font-weight: 500;
+      font-size: 13px;
+      margin-bottom: 10px;
+      color: #1a1a1a;
+      line-height: 1.4;
+    }
+
+    .field-row {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 4px;
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    .field-label {
+      color: #999;
+      min-width: 100px;
+      flex-shrink: 0;
+    }
+
+    .field-value { color: #1a1a1a; }
+
+    .grade-a { color: #2e7d5e; font-weight: 500; }
+    .grade-b { color: #b07d1f; font-weight: 500; }
+    .grade-c { color: #b03a2e; font-weight: 500; }
+
+    .summary-block {
+      margin-top: 16px;
+      padding: 12px;
+      background: #fff;
+      border-radius: 6px;
+      border: 1px solid #e8e8e8;
+    }
+
+    .summary-title {
+      font-size: 10px;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #999;
+      margin-bottom: 10px;
+    }
+
+    .summary-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      color: #444;
+      padding: 4px 0;
+      border-bottom: 1px solid #f5f5f5;
+    }
+
+    .summary-row:last-of-type { border-bottom: none; }
+
+    .issues-list {
+      margin-top: 10px;
+      list-style: none;
+    }
+
+    .issues-list li {
+      font-size: 12px;
+      color: #555;
+      margin-bottom: 4px;
+      padding-left: 10px;
+      position: relative;
+      line-height: 1.4;
+    }
+
+    .issues-list li::before {
+      content: '–';
+      position: absolute;
+      left: 0;
+      color: #ccc;
+    }
+
+    /* --- Expanded report view --- */
+    #reportView {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+
+    .report-view-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px;
+      border-bottom: 1px solid #e8e8e8;
+      background: #f9f9f8;
+      flex-shrink: 0;
+    }
+
+    .report-view-title {
+      font-size: 13px;
+      font-weight: 500;
+      color: #1a1a1a;
+    }
+
+    .close-btn {
+      flex: none;
+      padding: 5px 10px;
+      background: #ebebea;
+      color: #444;
+      border: none;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 500;
+      cursor: pointer;
+      font-family: inherit;
+    }
+
+    .close-btn:hover { opacity: 0.8; }
+
+    .report-view-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
     }
   </style>
 </head>
 <body>
-  <h2>Content Localizer</h2>
 
-  <div class="section">
-    <label class="group-label">Scope</label>
-    <div class="radio-group">
-      <label><input type="radio" name="scope" value="selection" checked /> Selection</label>
-      <label><input type="radio" name="scope" value="page" /> Current Page</label>
-      <label><input type="radio" name="scope" value="all" /> All Pages</label>
+  <!-- EXPANDED REPORT VIEW -->
+  <div id="reportView" class="hidden">
+    <div class="report-view-header">
+      <span class="report-view-title">Review</span>
+      <button class="close-btn" onclick="closeReportView()">✕ Close</button>
+    </div>
+    <div id="reportViewContent" class="report-view-body"></div>
+  </div>
+
+  <div id="mainView">
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="switchTab('localize')">Localize</button>
+    <button class="tab-btn" onclick="switchTab('report')">Review</button>
+  </div>
+
+  <!-- LOCALIZE TAB -->
+  <div id="tab-localize" class="tab-panel active">
+    <div class="section">
+      <label class="group-label">Scope</label>
+      <div class="radio-group">
+        <label><input type="radio" name="scope" value="selection" checked /> Selection</label>
+        <label><input type="radio" name="scope" value="page" /> Current Page</label>
+        <label><input type="radio" name="scope" value="all" /> All Pages</label>
+      </div>
+    </div>
+
+    <div class="section">
+      <label class="group-label">Mode</label>
+      <div class="radio-group">
+        <label><input type="radio" name="mode" value="translate" checked /> Translate</label>
+        <label><input type="radio" name="mode" value="stress" /> Stress Test</label>
+      </div>
+    </div>
+
+    <div class="section" id="translateSection">
+      <label class="group-label">Language</label>
+      <select id="translateLang">
+        <option value="es">Spanish</option>
+        <option value="fr">French</option>
+        <option value="de">German</option>
+        <option value="ja">Japanese</option>
+      </select>
+    </div>
+
+    <div class="section hidden" id="stressSection">
+      <label class="group-label">Expansion Language</label>
+      <select id="stressLang">
+        <option value="de">German (~35% longer)</option>
+        <option value="fi">Finnish (~50% longer)</option>
+      </select>
+    </div>
+
+    <div class="button-row">
+      <button id="applyBtn">Apply</button>
+      <button id="undoBtn">Undo</button>
     </div>
   </div>
 
-  <div class="section">
-    <label class="group-label">Mode</label>
-    <div class="radio-group">
-      <label><input type="radio" name="mode" value="translate" checked /> Translate</label>
-      <label><input type="radio" name="mode" value="stress" /> Stress Test</label>
+  <!-- REPORT TAB -->
+  <div id="tab-report" class="tab-panel">
+
+    <div class="section">
+      <label class="group-label">Scope</label>
+      <div class="radio-group">
+        <label><input type="radio" name="reportScope" value="selection" checked /> Selection</label>
+        <label><input type="radio" name="reportScope" value="page" /> Current Page</label>
+      </div>
     </div>
+
+    <button id="analyzeBtn" onclick="runReport()">Analyze</button>
+
+    <div id="reportStatus"></div>
+    <div id="reportError" class="hidden"></div>
+    <div id="reportResults"></div>
   </div>
 
-  <div class="section" id="translateSection">
-    <label class="group-label">Language</label>
-    <select id="translateLang">
-      <option value="es">Spanish</option>
-      <option value="fr">French</option>
-      <option value="de">German</option>
-      <option value="ja">Japanese</option>
-    </select>
-  </div>
-
-  <div class="section hidden" id="stressSection">
-    <label class="group-label">Expansion Language</label>
-    <select id="stressLang">
-      <option value="de">German (~35% longer)</option>
-      <option value="fi">Finnish (~50% longer)</option>
-    </select>
-  </div>
-
-  <div class="button-row">
-    <button id="applyBtn">Apply</button>
-    <button id="undoBtn">Undo</button>
-  </div>
+  </div> <!-- end mainView -->
 
   <script>
-    const modeRadios = document.querySelectorAll('input[name="mode"]');
-    const translateSection = document.getElementById('translateSection');
-    const stressSection = document.getElementById('stressSection');
+    const SYSTEM_PROMPT = `You are a content design reviewer evaluating UI text from Figma frames against two standards: the Shopify Polaris content style guide and WCAG 2.2 accessibility guidelines.
 
-    modeRadios.forEach((radio) => {
+For each text string provided, output a JSON object with this exact structure:
+{
+  "frames": [
+    {
+      "frame_name": "<frame name>",
+      "results": [
+        {
+          "string": "<exact text>",
+          "Style guide grade": "A" | "B" | "C",
+          "Accessibility grade": "A" | "B" | "C",
+          "rationale": "<one sentence citing the specific rule>",
+          "Recommendation for improvement": "<one or two sentences; required for B or C; use 'None.' for A/A>"
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "total_strings": <number>,
+    "top_issues": ["<brief description>"]
+  }
+}
+
+Grade scale: A = excellent, B = good with minor issues, C = needs improvement.
+
+Shopify Polaris rules to apply:
+1. Sentence case: Only capitalise the first word and proper nouns. Title case in UI copy is a violation.
+2. Plain language: Use everyday words. Avoid jargon or unnecessary complexity.
+3. Device-agnostic verbs: Never use "click", "tap", "swipe". Use "select", "choose", "open", "go to".
+4. Active voice: Prefer active constructions. Passive is acceptable only when the actor is unknown.
+5. Specific CTAs: Button labels must describe the action. "Click here", "Submit" on ambiguous forms are violations.
+6. Error messages: Must identify the problem and tell the user what to do next.
+7. Positive framing: Describe what the user can do, not what they can't.
+8. Contractions: Polaris encourages natural contractions (you'll, don't, it's).
+
+WCAG 2.2 rules to apply (text-analysable only):
+1. 2.4.4 Link purpose: Link/button text must make sense out of context. "Click here" or "Read more" alone fails.
+2. 2.4.6 Headings and labels: Must be descriptive. Vague headings like "Details" or "Info" are a B issue.
+3. 3.3.1 Error identification: Error messages must clearly state what went wrong.
+4. 3.3.2 Labels or instructions: Inputs must have descriptive labels.
+5. 2.4.2 Page titled: Primary headings should describe the screen's purpose.
+
+Edge cases:
+- No text found: return a single result with string="[No text content]", Style guide grade="N/A", Accessibility grade="C", rationale noting missing alt text.
+- Non-English text: WCAG checks only; set Style guide grade="N/A".
+- Ambiguous element role: use the most conservative accessibility interpretation; note ambiguity in rationale.
+
+Output valid JSON only. No markdown fences, no commentary, nothing outside the JSON object.`;
+
+    // --- Expanded report view ---
+    function openReportView(html) {
+      document.getElementById('reportViewContent').innerHTML = html;
+      document.getElementById('mainView').classList.add('hidden');
+      document.getElementById('reportView').classList.remove('hidden');
+      parent.postMessage({ pluginMessage: { type: 'resize', width: 520, height: 680 } }, '*');
+    }
+
+    function closeReportView() {
+      document.getElementById('mainView').classList.remove('hidden');
+      document.getElementById('reportView').classList.add('hidden');
+      parent.postMessage({ pluginMessage: { type: 'resize', width: 320, height: 520 } }, '*');
+    }
+
+    // --- Tab switching ---
+    function switchTab(name) {
+      document.querySelectorAll('.tab-btn').forEach((btn, i) => {
+        btn.classList.toggle('active', ['localize', 'report'][i] === name);
+      });
+      document.querySelectorAll('.tab-panel').forEach(panel => {
+        panel.classList.toggle('active', panel.id === 'tab-' + name);
+      });
+    }
+
+    // --- Localize tab ---
+    document.querySelectorAll('input[name="mode"]').forEach(radio => {
       radio.addEventListener('change', () => {
         const isStress = document.querySelector('input[name="mode"]:checked').value === 'stress';
-        translateSection.classList.toggle('hidden', isStress);
-        stressSection.classList.toggle('hidden', !isStress);
+        document.getElementById('translateSection').classList.toggle('hidden', isStress);
+        document.getElementById('stressSection').classList.toggle('hidden', !isStress);
       });
     });
 
@@ -172,13 +455,125 @@
       const lang = mode === 'stress'
         ? document.getElementById('stressLang').value
         : document.getElementById('translateLang').value;
-
       parent.postMessage({ pluginMessage: { type: 'apply', scope, mode, lang } }, '*');
     });
 
     document.getElementById('undoBtn').addEventListener('click', () => {
       parent.postMessage({ pluginMessage: { type: 'undo' } }, '*');
     });
+
+    // --- Report tab ---
+    function runReport() {
+      const scope = document.querySelector('input[name="reportScope"]:checked').value;
+      setReportStatus('Analyzing…');
+      clearReportError();
+      document.getElementById('reportResults').innerHTML = '';
+      document.getElementById('analyzeBtn').disabled = true;
+      parent.postMessage({ pluginMessage: { type: 'run-report', scope, systemPrompt: SYSTEM_PROMPT } }, '*');
+    }
+
+    function gradeClass(g) {
+      if (!g) return '';
+      if (g === 'A') return 'grade-a';
+      if (g === 'B') return 'grade-b';
+      if (g === 'C') return 'grade-c';
+      return '';
+    }
+
+    function esc(str) {
+      return String(str || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+    }
+
+    function renderResults(data) {
+      let html = '';
+
+      const frames = data.frames || [];
+      for (const frame of frames) {
+        for (const r of (frame.results || [])) {
+          const rec = r['Recommendation for improvement'];
+          html += `
+            <div class="string-block">
+              <div class="string-text">"${esc(r.string)}"</div>
+              <div class="field-row">
+                <span class="field-label">Style guide</span>
+                <span class="field-value ${gradeClass(r['Style guide grade'])}">${esc(r['Style guide grade'] || '—')}</span>
+              </div>
+              <div class="field-row">
+                <span class="field-label">Accessibility</span>
+                <span class="field-value ${gradeClass(r['Accessibility grade'])}">${esc(r['Accessibility grade'] || '—')}</span>
+              </div>
+              <div class="field-row">
+                <span class="field-label">Rationale</span>
+                <span class="field-value">${esc(r.rationale)}</span>
+              </div>
+              ${rec && rec !== 'None.' ? `
+              <div class="field-row">
+                <span class="field-label">Recommendation</span>
+                <span class="field-value">${esc(rec)}</span>
+              </div>` : ''}
+            </div>`;
+        }
+      }
+
+      if (data.summary) {
+        const s = data.summary;
+        html += `
+          <div class="summary-block">
+            <div class="summary-title">Summary</div>
+            <div class="summary-row"><span>Strings reviewed</span><span>${s.total_strings ?? '—'}</span></div>
+            ${s.top_issues?.length ? `
+              <ul class="issues-list" style="margin-top:8px">
+                ${s.top_issues.map(i => `<li>${esc(i)}</li>`).join('')}
+              </ul>` : ''}
+          </div>`;
+      }
+
+      openReportView(html);
+    }
+
+    function setReportStatus(msg) {
+      document.getElementById('reportStatus').textContent = msg;
+    }
+
+    function showReportError(msg) {
+      const el = document.getElementById('reportError');
+      el.textContent = msg;
+      el.classList.remove('hidden');
+    }
+
+    function clearReportError() {
+      document.getElementById('reportError').classList.add('hidden');
+    }
+
+    // --- Message handler from plugin code ---
+    window.onmessage = (event) => {
+      const msg = event.data.pluginMessage;
+      if (!msg) return;
+
+      if (msg.type === 'report-result') {
+        let raw = msg.raw.trim();
+        raw = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
+        try {
+          let parsed;
+          try { parsed = JSON.parse(raw); }
+          catch { const m = raw.match(/\{[\s\S]*\}/); parsed = JSON.parse(m[0]); }
+          setReportStatus('');
+          renderResults(parsed);
+        } catch {
+          showReportError('Could not parse response. Try again.');
+          setReportStatus('');
+        }
+        document.getElementById('analyzeBtn').disabled = false;
+      } else if (msg.type === 'report-error') {
+        showReportError(msg.error);
+        setReportStatus('');
+        document.getElementById('analyzeBtn').disabled = false;
+      }
+    };
+
   </script>
 </body>
 </html>

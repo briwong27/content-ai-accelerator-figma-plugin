@@ -1,6 +1,6 @@
 "use strict";
 /// <reference path="./node_modules/@figma/plugin-typings/index.d.ts" />
-figma.showUI(__html__, { width: 320, height: 420 });
+figma.showUI(__html__, { width: 320, height: 520 });
 function getStyledRuns(node) {
     const len = node.characters.length;
     if (len === 0)
@@ -182,5 +182,41 @@ figma.ui.onmessage = async (msg) => {
     }
     else if (msg.type === 'undo') {
         await undoLocalization();
+    }
+    else if (msg.type === 'get-api-key') {
+        const key = await figma.clientStorage.getAsync('anthropic-api-key');
+        figma.ui.postMessage({ type: 'api-key', key: key || '' });
+    }
+    else if (msg.type === 'save-api-key') {
+        await figma.clientStorage.setAsync('anthropic-api-key', msg.key);
+        figma.ui.postMessage({ type: 'api-key-saved' });
+    }
+    else if (msg.type === 'resize') {
+        figma.ui.resize(msg.width, msg.height);
+    }
+    else if (msg.type === 'run-report') {
+        const scope = msg.scope === 'page' ? 'page' : 'selection';
+        const nodes = getScopedNodes(scope);
+        if (nodes.length === 0) {
+            figma.ui.postMessage({ type: 'report-error', error: 'No text found in the selected scope.' });
+            return;
+        }
+        const texts = nodes.map(n => n.characters);
+        try {
+            const res = await fetch('http://localhost:3000/api/analyze-plugin', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ texts, systemPrompt: msg.systemPrompt })
+            });
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                throw new Error(err.error || `Server error ${res.status}`);
+            }
+            const data = await res.json();
+            figma.ui.postMessage({ type: 'report-result', raw: JSON.stringify(data.report) });
+        }
+        catch (err) {
+            figma.ui.postMessage({ type: 'report-error', error: err.message });
+        }
     }
 };

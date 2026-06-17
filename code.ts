@@ -1,6 +1,6 @@
 /// <reference path="./node_modules/@figma/plugin-typings/index.d.ts" />
 
-figma.showUI(__html__, { width: 320, height: 420 });
+figma.showUI(__html__, { width: 320, height: 520 });
 
 type Scope = 'selection' | 'page' | 'all';
 type Mode = 'translate' | 'stress';
@@ -18,7 +18,28 @@ interface UndoMessage {
   type: 'undo';
 }
 
-type PluginMessage = ApplyMessage | UndoMessage;
+interface GetApiKeyMessage {
+  type: 'get-api-key';
+}
+
+interface SaveApiKeyMessage {
+  type: 'save-api-key';
+  key: string;
+}
+
+interface RunReportMessage {
+  type: 'run-report';
+  scope: 'selection' | 'page';
+  systemPrompt: string;
+}
+
+interface ResizeMessage {
+  type: 'resize';
+  width: number;
+  height: number;
+}
+
+type PluginMessage = ApplyMessage | UndoMessage | GetApiKeyMessage | SaveApiKeyMessage | RunReportMessage | ResizeMessage;
 
 // --- Style runs ---
 // A run is a contiguous segment of text where fontName and fontSize are uniform.
@@ -234,5 +255,41 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
     await applyLocalization(msg);
   } else if (msg.type === 'undo') {
     await undoLocalization();
+  } else if (msg.type === 'get-api-key') {
+    const key = await figma.clientStorage.getAsync('anthropic-api-key') as string | undefined;
+    figma.ui.postMessage({ type: 'api-key', key: key || '' });
+  } else if (msg.type === 'save-api-key') {
+    await figma.clientStorage.setAsync('anthropic-api-key', msg.key);
+    figma.ui.postMessage({ type: 'api-key-saved' });
+  } else if (msg.type === 'resize') {
+    figma.ui.resize(msg.width, msg.height);
+  } else if (msg.type === 'run-report') {
+    const scope: Scope = msg.scope === 'page' ? 'page' : 'selection';
+    const nodes = getScopedNodes(scope);
+
+    if (nodes.length === 0) {
+      figma.ui.postMessage({ type: 'report-error', error: 'No text found in the selected scope.' });
+      return;
+    }
+
+    const texts = nodes.map(n => n.characters);
+
+    try {
+      const res = await fetch('http://localhost:3000/api/analyze-plugin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ texts, systemPrompt: msg.systemPrompt })
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({})) as { error?: string };
+        throw new Error(err.error || `Server error ${res.status}`);
+      }
+
+      const data = await res.json() as { report: unknown };
+      figma.ui.postMessage({ type: 'report-result', raw: JSON.stringify(data.report) });
+    } catch (err) {
+      figma.ui.postMessage({ type: 'report-error', error: (err as Error).message });
+    }
   }
 };
