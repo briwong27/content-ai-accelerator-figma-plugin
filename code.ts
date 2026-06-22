@@ -5,7 +5,7 @@ figma.showUI(__html__, { width: 320, height: 520 });
 type Scope = 'selection' | 'page' | 'all';
 type Mode = 'translate' | 'stress';
 type StressLang = 'de' | 'fi' | 'ar' | 'zh' | 'zh-TW' | 'ja';
-type TranslateLang = 'es' | 'fr' | 'de' | 'ja' | 'ar' | 'zh' | 'zh-TW';
+type TranslateLang = 'en' | 'es' | 'fr' | 'de' | 'ja' | 'ar' | 'zh' | 'zh-TW';
 
 interface ApplyMessage {
   type: 'apply';
@@ -228,6 +228,38 @@ function loadSnapshot(): Snapshot | null {
   }
 }
 
+// --- Original (English) store ---
+// Unlike the single-step undo snapshot, this records each node's pristine
+// state the first time it is localized and never overwrites it. This lets the
+// "English" option restore the original text even after many stress tests.
+
+function loadOriginals(): Snapshot {
+  const raw = figma.root.getPluginData('localization_original');
+  if (!raw) return {};
+  try {
+    return JSON.parse(raw) as Snapshot;
+  } catch {
+    return {};
+  }
+}
+
+function recordOriginals(nodes: TextNode[]): void {
+  const originals = loadOriginals();
+  let changed = false;
+  for (const node of nodes) {
+    if (!originals[node.id]) {
+      originals[node.id] = {
+        runs: getStyledRuns(node),
+        textAutoResize: node.textAutoResize,
+      };
+      changed = true;
+    }
+  }
+  if (changed) {
+    figma.root.setPluginData('localization_original', JSON.stringify(originals));
+  }
+}
+
 // --- Main handlers ---
 
 async function applyLocalization(msg: ApplyMessage): Promise<void> {
@@ -238,6 +270,15 @@ async function applyLocalization(msg: ApplyMessage): Promise<void> {
   }
 
   saveSnapshot(nodes);
+
+  // "English" restores each node to its recorded original instead of translating.
+  if (msg.mode === 'translate' && msg.lang === 'en') {
+    await restoreToEnglish(nodes);
+    return;
+  }
+
+  // Capture pristine English the first time each node is localized.
+  recordOriginals(nodes);
 
   let successCount = 0;
   for (const node of nodes) {
@@ -263,6 +304,32 @@ async function applyLocalization(msg: ApplyMessage): Promise<void> {
   }
 
   figma.notify(`Applied to ${successCount} of ${nodes.length} text layers.`);
+}
+
+async function restoreToEnglish(nodes: TextNode[]): Promise<void> {
+  const originals = loadOriginals();
+  let restored = 0;
+  let missing = 0;
+  for (const node of nodes) {
+    const original = originals[node.id];
+    if (!original) {
+      missing++;
+      continue;
+    }
+    try {
+      node.textAutoResize = original.textAutoResize;
+      await applyStyledRuns(node, original.runs);
+      restored++;
+    } catch (err) {
+      console.error(`Could not restore node ${node.id} to English:`, err);
+    }
+  }
+
+  if (restored === 0 && missing > 0) {
+    figma.notify('No original English text on record for these layers.');
+  } else {
+    figma.notify(`Restored ${restored} layer(s) to English.`);
+  }
 }
 
 async function undoLocalization(): Promise<void> {
