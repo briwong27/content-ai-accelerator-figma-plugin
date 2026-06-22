@@ -127,62 +127,47 @@ function expandTextFI(text: string): string {
     .join(' ');
 }
 
-// Arabic: Add diacritics throughout text to simulate RTL complexity
-// Diacritics (fatha, damma, etc.) increase visual weight and test rendering with combining marks
-function expandTextAR(text: string): string {
+// Arabic: After translating to real Arabic, add diacritics (tashkeel) to letters.
+// This keeps the text authentic Arabic while increasing visual density and
+// testing how combining marks render and affect line height.
+function addArabicDiacritics(text: string): string {
   const diacritics = ['َ', 'ِ', 'ُ', 'ً', 'ٌ', 'ّ', 'ْ'];
   let result = '';
-  let diacriticIndex = 0;
-  for (let i = 0; i < text.length; i++) {
-    result += text[i];
-    if (text[i] !== ' ') {
-      result += diacritics[diacriticIndex % diacritics.length];
-      diacriticIndex++;
+  let i = 0;
+  for (const ch of text) {
+    result += ch;
+    const code = ch.charCodeAt(0);
+    // Only decorate actual Arabic letters (Unicode 0x0600–0x06FF)
+    if (code >= 0x0600 && code <= 0x06FF) {
+      result += diacritics[i % diacritics.length];
+      i++;
     }
   }
   return result;
 }
 
-// Chinese: Repeat characters to simulate CJK density and stroke complexity
-// Tests fullwidth character rendering and increased text width
-function expandTextZH(text: string): string {
-  const chineseChars = ['字', '中', '文', '语', '言', '系', '统', '字', '符', '串'];
+// CJK (Chinese/Japanese): After translating, double each character to push
+// text length/width to a worst-case while staying in the target script.
+function lengthenCJK(text: string): string {
   let result = '';
-  let charIndex = 0;
-  for (let i = 0; i < text.length; i++) {
-    result += text[i];
-    if (text[i] !== ' ') {
-      result += chineseChars[charIndex % chineseChars.length];
-      charIndex++;
-    }
+  for (const ch of text) {
+    result += ch;
+    if (ch.trim() !== '') result += ch;
   }
   return result;
 }
 
-// Japanese: Add hiragana combining characters to simulate ruby text and script mixing
-// Tests mixed Latin + fullwidth script rendering and text height/complexity
-function expandTextJA(text: string): string {
-  const rubyChars = ['あ', 'い', 'う', 'え', 'お', 'か', 'き', 'く', 'け', 'こ'];
-  let result = '';
-  let rubyIndex = 0;
-  for (let i = 0; i < text.length; i++) {
-    result += text[i];
-    if (text[i] !== ' ') {
-      result += rubyChars[rubyIndex % rubyChars.length];
-      rubyIndex++;
-    }
-  }
-  return result;
-}
-
-function expandText(text: string, lang: StressLang): string {
+// Stress text: German/Finnish use local pseudo-expansion (Latin script, no
+// translation needed). Arabic/Chinese/Japanese are translated to the real
+// language first, then expanded so the output is genuine script under stress.
+async function stressText(text: string, lang: StressLang): Promise<string> {
   if (lang === 'de') return expandTextDE(text);
   if (lang === 'fi') return expandTextFI(text);
-  if (lang === 'ar') return expandTextAR(text);
-  if (lang === 'zh') return expandTextZH(text);
-  if (lang === 'zh-TW') return expandTextZH(text); // Same expansion as simplified
-  if (lang === 'ja') return expandTextJA(text);
-  return text;
+
+  if (!text.trim()) return text;
+  const translated = await translateText(text, lang as TranslateLang);
+  if (lang === 'ar') return addArabicDiacritics(translated);
+  return lengthenCJK(translated); // zh, zh-TW, ja
 }
 
 // --- Translation ---
@@ -263,7 +248,7 @@ async function applyLocalization(msg: ApplyMessage): Promise<void> {
       for (const run of originalRuns) {
         let translatedText: string;
         if (msg.mode === 'stress') {
-          translatedText = expandText(run.text, msg.lang as StressLang);
+          translatedText = await stressText(run.text, msg.lang as StressLang);
         } else {
           translatedText = await translateText(run.text, msg.lang as TranslateLang);
         }
