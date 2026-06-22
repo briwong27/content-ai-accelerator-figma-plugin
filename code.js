@@ -261,7 +261,7 @@ figma.ui.onmessage = async (msg) => {
         figma.ui.resize(msg.width, msg.height);
     }
     else if (msg.type === 'run-report') {
-        const scope = msg.scope === 'page' ? 'page' : 'selection';
+        const scope = (msg.scope === 'page' || msg.scope === 'all') ? msg.scope : 'selection';
         const nodes = getScopedNodes(scope);
         if (nodes.length === 0) {
             figma.ui.postMessage({ type: 'report-error', error: 'No text found in the selected scope.' });

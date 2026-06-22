@@ -29,7 +29,7 @@ interface SaveApiKeyMessage {
 
 interface RunReportMessage {
   type: 'run-report';
-  scope: 'selection' | 'page';
+  scope: 'selection' | 'page' | 'all';
   systemPrompt: string;
 }
 
@@ -329,7 +329,7 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
   } else if (msg.type === 'resize') {
     figma.ui.resize(msg.width, msg.height);
   } else if (msg.type === 'run-report') {
-    const scope: Scope = msg.scope === 'page' ? 'page' : 'selection';
+    const scope: Scope = (msg.scope === 'page' || msg.scope === 'all') ? msg.scope : 'selection';
     const nodes = getScopedNodes(scope);
 
     if (nodes.length === 0) {
