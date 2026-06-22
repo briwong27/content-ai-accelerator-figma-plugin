@@ -68,32 +68,50 @@ function expandTextFI(text) {
     })
         .join(' ');
 }
-// Arabic: Simulate RTL text complexity by adding Arabic characters as suffix
-// Tests how UI handles mixed RTL/LTR text and longer text strings
+// Arabic: Add diacritics throughout text to simulate RTL complexity
+// Diacritics (fatha, damma, etc.) increase visual weight and test rendering with combining marks
 function expandTextAR(text) {
-    const arabicSuffixes = ['ـي', 'ـك', 'ـن', 'ـة', 'ـل'];
-    return text
-        .split(' ')
-        .map((word, i) => (word.length === 0 ? word : word + arabicSuffixes[i % arabicSuffixes.length]))
-        .join(' ');
+    const diacritics = ['َ', 'ِ', 'ُ', 'ً', 'ٌ', 'ّ', 'ْ'];
+    let result = '';
+    let diacriticIndex = 0;
+    for (let i = 0; i < text.length; i++) {
+        result += text[i];
+        if (text[i] !== ' ') {
+            result += diacritics[diacriticIndex % diacritics.length];
+            diacriticIndex++;
+        }
+    }
+    return result;
 }
-// Chinese: Simulate CJK character complexity by adding Chinese characters
-// Tests fullwidth character rendering and text wrapping with high stroke count
+// Chinese: Repeat characters to simulate CJK density and stroke complexity
+// Tests fullwidth character rendering and increased text width
 function expandTextZH(text) {
-    const chineseSuffixes = ['字', '中', '文', '系', '統'];
-    return text
-        .split(' ')
-        .map((word, i) => (word.length === 0 ? word : word + chineseSuffixes[i % chineseSuffixes.length]))
-        .join(' ');
+    const chineseChars = ['字', '中', '文', '语', '言', '系', '统', '字', '符', '串'];
+    let result = '';
+    let charIndex = 0;
+    for (let i = 0; i < text.length; i++) {
+        result += text[i];
+        if (text[i] !== ' ') {
+            result += chineseChars[charIndex % chineseChars.length];
+            charIndex++;
+        }
+    }
+    return result;
 }
-// Japanese: Simulate Japanese complexity by adding Japanese characters
-// Tests fullwidth rendering and script mixing (Latin + hiragana/katakana)
+// Japanese: Add hiragana combining characters to simulate ruby text and script mixing
+// Tests mixed Latin + fullwidth script rendering and text height/complexity
 function expandTextJA(text) {
-    const japaneseSuffixes = ['です', 'ます', 'する', 'いる', 'ある'];
-    return text
-        .split(' ')
-        .map((word, i) => (word.length === 0 ? word : word + japaneseSuffixes[i % japaneseSuffixes.length]))
-        .join(' ');
+    const rubyChars = ['あ', 'い', 'う', 'え', 'お', 'か', 'き', 'く', 'け', 'こ'];
+    let result = '';
+    let rubyIndex = 0;
+    for (let i = 0; i < text.length; i++) {
+        result += text[i];
+        if (text[i] !== ' ') {
+            result += rubyChars[rubyIndex % rubyChars.length];
+            rubyIndex++;
+        }
+    }
+    return result;
 }
 function expandText(text, lang) {
     if (lang === 'de')
