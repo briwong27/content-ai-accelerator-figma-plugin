@@ -4,8 +4,8 @@ figma.showUI(__html__, { width: 320, height: 520 });
 
 type Scope = 'selection' | 'page' | 'all';
 type Mode = 'translate' | 'stress';
-type StressLang = 'de' | 'fi';
-type TranslateLang = 'es' | 'fr' | 'de' | 'ja';
+type StressLang = 'de' | 'fi' | 'ar' | 'zh' | 'zh-TW' | 'ja';
+type TranslateLang = 'es' | 'fr' | 'de' | 'ja' | 'ar' | 'zh' | 'zh-TW';
 
 interface ApplyMessage {
   type: 'apply';
@@ -127,8 +127,73 @@ function expandTextFI(text: string): string {
     .join(' ');
 }
 
+// Arabic: Add diacritical marks (tashkeel) for stress testing
+// Diacritics simulate RTL complexity and test rendering with combining marks
+function expandTextAR(text: string): string {
+  const diacritics = ['َ', 'ِ', 'ُ', 'ً', 'ٌ']; // fatha, kasra, damma, fathatan, dammatan
+  let result = '';
+  let diacriticIndex = 0;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    result += ch;
+    // Add diacritics to Arabic letters (Unicode range: 0x0600-0x06FF)
+    if (ch.charCodeAt(0) >= 0x0600 && ch.charCodeAt(0) <= 0x06FF && ch !== ' ') {
+      result += diacritics[diacriticIndex % diacritics.length];
+      diacriticIndex++;
+    }
+  }
+  return result;
+}
+
+// Chinese: Convert simplified characters to traditional equivalents
+// Traditional characters often have more strokes, testing text wrapping
+const simplifiedToTraditional: Record<string, string> = {
+  '简': '簡', '体': '體', '中': '中', '国': '國', '的': '的', '一': '一',
+  '是': '是', '在': '在', '了': '了', '不': '不', '和': '和', '人': '人',
+  '这': '這', '大': '大', '为': '為', '上': '上', '个': '個',
+  '生': '生', '能': '能', '到': '到', '多': '多', '第': '第',
+};
+
+function expandTextZH(text: string): string {
+  return text
+    .split('')
+    .map(ch => simplifiedToTraditional[ch] || ch)
+    .join('');
+}
+
+// Japanese: Convert between scripts to test rendering complexity
+// Converts hiragana to katakana to test fullwidth character rendering
+const hiraganaToKatakana: Record<string, string> = {
+  'ぁ': 'ァ', 'あ': 'ア', 'ぃ': 'ィ', 'い': 'イ', 'ぅ': 'ゥ', 'う': 'ウ',
+  'ぇ': 'ェ', 'え': 'エ', 'ぉ': 'ォ', 'お': 'オ', 'か': 'カ', 'が': 'ガ',
+  'き': 'キ', 'ぎ': 'ギ', 'く': 'ク', 'ぐ': 'グ', 'け': 'ケ', 'げ': 'ゲ',
+  'こ': 'コ', 'ご': 'ゴ', 'さ': 'サ', 'ざ': 'ザ', 'し': 'シ', 'じ': 'ジ',
+  'す': 'ス', 'ず': 'ズ', 'せ': 'セ', 'ぜ': 'ゼ', 'そ': 'ソ', 'ぞ': 'ゾ',
+  'た': 'タ', 'だ': 'ダ', 'ち': 'チ', 'ぢ': 'ヂ', 'つ': 'ツ', 'づ': 'ヅ',
+  'て': 'テ', 'で': 'デ', 'と': 'ト', 'ど': 'ド', 'な': 'ナ', 'に': 'ニ',
+  'ぬ': 'ヌ', 'ね': 'ネ', 'の': 'ノ', 'は': 'ハ', 'ば': 'バ', 'ぱ': 'パ',
+  'ひ': 'ヒ', 'び': 'ビ', 'ぴ': 'ピ', 'ふ': 'フ', 'ぶ': 'ブ', 'ぷ': 'プ',
+  'へ': 'ヘ', 'べ': 'ベ', 'ぺ': 'ペ', 'ほ': 'ホ', 'ぼ': 'ボ', 'ぽ': 'ポ',
+  'ま': 'マ', 'み': 'ミ', 'む': 'ム', 'め': 'メ', 'も': 'モ', 'や': 'ヤ',
+  'ゆ': 'ユ', 'よ': 'ヨ', 'ら': 'ラ', 'り': 'リ', 'る': 'ル', 'れ': 'レ',
+  'ろ': 'ロ', 'わ': 'ワ', 'ゐ': 'ヰ', 'ゑ': 'ヱ', 'を': 'ヲ', 'ん': 'ン',
+};
+
+function expandTextJA(text: string): string {
+  return text
+    .split('')
+    .map(ch => hiraganaToKatakana[ch] || ch)
+    .join('');
+}
+
 function expandText(text: string, lang: StressLang): string {
-  return lang === 'de' ? expandTextDE(text) : expandTextFI(text);
+  if (lang === 'de') return expandTextDE(text);
+  if (lang === 'fi') return expandTextFI(text);
+  if (lang === 'ar') return expandTextAR(text);
+  if (lang === 'zh') return expandTextZH(text);
+  if (lang === 'zh-TW') return text; // Traditional already, no expansion needed
+  if (lang === 'ja') return expandTextJA(text);
+  return text;
 }
 
 // --- Translation ---
