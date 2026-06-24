@@ -27,6 +27,15 @@ interface SaveApiKeyMessage {
   key: string;
 }
 
+interface GetTermRulesMessage {
+  type: 'get-term-rules';
+}
+
+interface SaveTermRulesMessage {
+  type: 'save-term-rules';
+  rules: string;
+}
+
 interface RunReportMessage {
   type: 'run-report';
   scope: 'selection' | 'page' | 'all';
@@ -61,7 +70,7 @@ interface TerminologyMessage {
   rules: TermRule[];
 }
 
-type PluginMessage = ApplyMessage | UndoMessage | GetApiKeyMessage | SaveApiKeyMessage | RunReportMessage | ResizeMessage | FindReplaceMessage | TerminologyMessage;
+type PluginMessage = ApplyMessage | UndoMessage | GetApiKeyMessage | SaveApiKeyMessage | GetTermRulesMessage | SaveTermRulesMessage | RunReportMessage | ResizeMessage | FindReplaceMessage | TerminologyMessage;
 
 // --- Style runs ---
 // A run is a contiguous segment of text where fontName and fontSize are uniform.
@@ -458,6 +467,11 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
   } else if (msg.type === 'save-api-key') {
     await figma.clientStorage.setAsync('anthropic-api-key', msg.key);
     figma.ui.postMessage({ type: 'api-key-saved' });
+  } else if (msg.type === 'get-term-rules') {
+    const rules = await figma.clientStorage.getAsync('terminology-rules') as string | undefined;
+    figma.ui.postMessage({ type: 'term-rules', rules: rules || '' });
+  } else if (msg.type === 'save-term-rules') {
+    await figma.clientStorage.setAsync('terminology-rules', msg.rules);
   } else if (msg.type === 'resize') {
     figma.ui.resize(msg.width, msg.height);
   } else if (msg.type === 'find-replace') {

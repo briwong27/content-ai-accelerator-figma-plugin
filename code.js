@@ -357,6 +357,13 @@ figma.ui.onmessage = async (msg) => {
         await figma.clientStorage.setAsync('anthropic-api-key', msg.key);
         figma.ui.postMessage({ type: 'api-key-saved' });
     }
+    else if (msg.type === 'get-term-rules') {
+        const rules = await figma.clientStorage.getAsync('terminology-rules');
+        figma.ui.postMessage({ type: 'term-rules', rules: rules || '' });
+    }
+    else if (msg.type === 'save-term-rules') {
+        await figma.clientStorage.setAsync('terminology-rules', msg.rules);
+    }
     else if (msg.type === 'resize') {
         figma.ui.resize(msg.width, msg.height);
     }

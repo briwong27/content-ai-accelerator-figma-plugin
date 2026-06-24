@@ -635,6 +635,19 @@ Output valid JSON only. No markdown fences, no commentary, nothing outside the J
     document.getElementById('termCheckBtn').addEventListener('click', () => sendTerminology('scan'));
     document.getElementById('termFixBtn').addEventListener('click', () => sendTerminology('fix'));
 
+    // Persist the ruleset so custom rules survive across sessions.
+    let saveRulesTimer;
+    document.getElementById('termRules').addEventListener('input', () => {
+      clearTimeout(saveRulesTimer);
+      saveRulesTimer = setTimeout(() => {
+        const rules = document.getElementById('termRules').value;
+        parent.postMessage({ pluginMessage: { type: 'save-term-rules', rules } }, '*');
+      }, 400);
+    });
+
+    // Request any saved ruleset on startup.
+    parent.postMessage({ pluginMessage: { type: 'get-term-rules' } }, '*');
+
     function renderTermViolations(violations) {
       const container = document.getElementById('termResults');
       if (!violations.length) {
@@ -784,6 +797,11 @@ Output valid JSON only. No markdown fences, no commentary, nothing outside the J
           status.textContent = msg.count === 0
             ? 'No matches to replace.'
             : `Replaced ${msg.count} occurrence${msg.count === 1 ? '' : 's'} in ${msg.nodes} layer${msg.nodes === 1 ? '' : 's'}.`;
+        }
+      } else if (msg.type === 'term-rules') {
+        // Restore a previously saved ruleset; keep the default if none stored.
+        if (msg.rules && msg.rules.trim()) {
+          document.getElementById('termRules').value = msg.rules;
         }
       } else if (msg.type === 'term-result') {
         const status = document.getElementById('termStatus');
