@@ -125,6 +125,67 @@ async function translateText(text, lang) {
         throw new Error(`Translation error: ${data.responseStatus}`);
     return data.responseData.translatedText;
 }
+function escapeRegExp(s) {
+    return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+function applyReplace(text, find, replace, opts) {
+    if (!find)
+        return { result: text, count: 0 };
+    let pattern = escapeRegExp(find);
+    if (opts.wholeWord)
+        pattern = `\\b${pattern}\\b`;
+    const re = new RegExp(pattern, 'g' + (opts.matchCase ? '' : 'i'));
+    let count = 0;
+    const result = text.replace(re, (match) => {
+        count++;
+        const first = match.charAt(0);
+        if (opts.preserveCase && first && first === first.toUpperCase() && first !== first.toLowerCase()) {
+            return replace.charAt(0).toUpperCase() + replace.slice(1);
+        }
+        return replace;
+    });
+    return { result, count };
+}
+// Count occurrences across nodes without mutating anything.
+function countMatches(nodes, find, replace, opts) {
+    let count = 0;
+    for (const node of nodes) {
+        count += applyReplace(node.characters, find, replace, opts).count;
+    }
+    return count;
+}
+// Apply one or more replacement rules to every node, preserving per-run styling.
+// Returns total replacements made and how many layers changed.
+async function replaceInNodes(nodes, rules, opts) {
+    let count = 0;
+    let changedNodes = 0;
+    for (const node of nodes) {
+        try {
+            const runs = getStyledRuns(node);
+            let nodeCount = 0;
+            const newRuns = runs.map((run) => {
+                let text = run.text;
+                for (const rule of rules) {
+                    if (!rule.find)
+                        continue;
+                    const res = applyReplace(text, rule.find, rule.replace, opts);
+                    text = res.result;
+                    nodeCount += res.count;
+                }
+                return Object.assign(Object.assign({}, run), { text });
+            });
+            if (nodeCount > 0) {
+                await applyStyledRuns(node, newRuns);
+                count += nodeCount;
+                changedNodes++;
+            }
+        }
+        catch (err) {
+            console.error(`Skipped node ${node.id}:`, err);
+        }
+    }
+    return { count, changedNodes };
+}
 // --- Node traversal ---
 function collectTextNodes(node) {
     if (node.type === 'TEXT')
@@ -298,6 +359,51 @@ figma.ui.onmessage = async (msg) => {
     }
     else if (msg.type === 'resize') {
         figma.ui.resize(msg.width, msg.height);
+    }
+    else if (msg.type === 'find-replace') {
+        const nodes = getScopedNodes(msg.scope);
+        if (nodes.length === 0) {
+            figma.ui.postMessage({ type: 'fr-result', mode: msg.action, count: 0, noScope: true });
+            return;
+        }
+        const opts = { matchCase: msg.matchCase, wholeWord: msg.wholeWord, preserveCase: !msg.matchCase };
+        if (msg.action === 'count') {
+            const count = countMatches(nodes, msg.find, msg.replace, opts);
+            figma.ui.postMessage({ type: 'fr-result', mode: 'count', count });
+            return;
+        }
+        saveSnapshot(nodes);
+        const { count, changedNodes } = await replaceInNodes(nodes, [{ find: msg.find, replace: msg.replace }], opts);
+        figma.notify(`Replaced ${count} occurrence(s) in ${changedNodes} layer(s).`);
+        figma.ui.postMessage({ type: 'fr-result', mode: 'replace', count, nodes: changedNodes });
+    }
+    else if (msg.type === 'terminology') {
+        const nodes = getScopedNodes(msg.scope);
+        if (nodes.length === 0) {
+            figma.ui.postMessage({ type: 'term-result', mode: msg.action, violations: [], count: 0, noScope: true });
+            return;
+        }
+        const opts = { matchCase: false, wholeWord: true, preserveCase: true };
+        if (msg.action === 'scan') {
+            const violations = [];
+            for (const node of nodes) {
+                for (const rule of msg.rules) {
+                    if (!rule.find)
+                        continue;
+                    const c = applyReplace(node.characters, rule.find, rule.replace, opts).count;
+                    if (c > 0) {
+                        violations.push({ string: node.characters, layer: node.name, term: rule.find, suggestion: rule.replace, count: c });
+                    }
+                }
+            }
+            const total = violations.reduce((a, v) => a + v.count, 0);
+            figma.ui.postMessage({ type: 'term-result', mode: 'scan', violations, count: total });
+            return;
+        }
+        saveSnapshot(nodes);
+        const { count, changedNodes } = await replaceInNodes(nodes, msg.rules, opts);
+        figma.notify(`Fixed ${count} term(s) in ${changedNodes} layer(s).`);
+        figma.ui.postMessage({ type: 'term-result', mode: 'fix', violations: [], count, nodes: changedNodes });
     }
     else if (msg.type === 'run-report') {
         const scope = (msg.scope === 'page' || msg.scope === 'all') ? msg.scope : 'selection';

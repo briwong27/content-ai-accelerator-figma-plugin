@@ -39,7 +39,29 @@ interface ResizeMessage {
   height: number;
 }
 
-type PluginMessage = ApplyMessage | UndoMessage | GetApiKeyMessage | SaveApiKeyMessage | RunReportMessage | ResizeMessage;
+interface FindReplaceMessage {
+  type: 'find-replace';
+  action: 'count' | 'replace';
+  scope: Scope;
+  find: string;
+  replace: string;
+  matchCase: boolean;
+  wholeWord: boolean;
+}
+
+interface TermRule {
+  find: string;
+  replace: string;
+}
+
+interface TerminologyMessage {
+  type: 'terminology';
+  action: 'scan' | 'fix';
+  scope: Scope;
+  rules: TermRule[];
+}
+
+type PluginMessage = ApplyMessage | UndoMessage | GetApiKeyMessage | SaveApiKeyMessage | RunReportMessage | ResizeMessage | FindReplaceMessage | TerminologyMessage;
 
 // --- Style runs ---
 // A run is a contiguous segment of text where fontName and fontSize are uniform.
@@ -180,6 +202,75 @@ async function translateText(text: string, lang: TranslateLang): Promise<string>
   const data = await res.json() as { responseData: { translatedText: string }; responseStatus: number };
   if (data.responseStatus !== 200) throw new Error(`Translation error: ${data.responseStatus}`);
   return data.responseData.translatedText;
+}
+
+// --- Find & replace engine ---
+
+interface ReplaceOpts {
+  matchCase: boolean;
+  wholeWord: boolean;
+  preserveCase: boolean; // capitalize replacement when the match is capitalized
+}
+
+function escapeRegExp(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function applyReplace(text: string, find: string, replace: string, opts: ReplaceOpts): { result: string; count: number } {
+  if (!find) return { result: text, count: 0 };
+  let pattern = escapeRegExp(find);
+  if (opts.wholeWord) pattern = `\\b${pattern}\\b`;
+  const re = new RegExp(pattern, 'g' + (opts.matchCase ? '' : 'i'));
+  let count = 0;
+  const result = text.replace(re, (match) => {
+    count++;
+    const first = match.charAt(0);
+    if (opts.preserveCase && first && first === first.toUpperCase() && first !== first.toLowerCase()) {
+      return replace.charAt(0).toUpperCase() + replace.slice(1);
+    }
+    return replace;
+  });
+  return { result, count };
+}
+
+// Count occurrences across nodes without mutating anything.
+function countMatches(nodes: TextNode[], find: string, replace: string, opts: ReplaceOpts): number {
+  let count = 0;
+  for (const node of nodes) {
+    count += applyReplace(node.characters, find, replace, opts).count;
+  }
+  return count;
+}
+
+// Apply one or more replacement rules to every node, preserving per-run styling.
+// Returns total replacements made and how many layers changed.
+async function replaceInNodes(nodes: TextNode[], rules: TermRule[], opts: ReplaceOpts): Promise<{ count: number; changedNodes: number }> {
+  let count = 0;
+  let changedNodes = 0;
+  for (const node of nodes) {
+    try {
+      const runs = getStyledRuns(node);
+      let nodeCount = 0;
+      const newRuns = runs.map((run) => {
+        let text = run.text;
+        for (const rule of rules) {
+          if (!rule.find) continue;
+          const res = applyReplace(text, rule.find, rule.replace, opts);
+          text = res.result;
+          nodeCount += res.count;
+        }
+        return { ...run, text };
+      });
+      if (nodeCount > 0) {
+        await applyStyledRuns(node, newRuns);
+        count += nodeCount;
+        changedNodes++;
+      }
+    } catch (err) {
+      console.error(`Skipped node ${node.id}:`, err);
+    }
+  }
+  return { count, changedNodes };
 }
 
 // --- Node traversal ---
@@ -369,6 +460,52 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
     figma.ui.postMessage({ type: 'api-key-saved' });
   } else if (msg.type === 'resize') {
     figma.ui.resize(msg.width, msg.height);
+  } else if (msg.type === 'find-replace') {
+    const nodes = getScopedNodes(msg.scope);
+    if (nodes.length === 0) {
+      figma.ui.postMessage({ type: 'fr-result', mode: msg.action, count: 0, noScope: true });
+      return;
+    }
+    const opts: ReplaceOpts = { matchCase: msg.matchCase, wholeWord: msg.wholeWord, preserveCase: !msg.matchCase };
+
+    if (msg.action === 'count') {
+      const count = countMatches(nodes, msg.find, msg.replace, opts);
+      figma.ui.postMessage({ type: 'fr-result', mode: 'count', count });
+      return;
+    }
+
+    saveSnapshot(nodes);
+    const { count, changedNodes } = await replaceInNodes(nodes, [{ find: msg.find, replace: msg.replace }], opts);
+    figma.notify(`Replaced ${count} occurrence(s) in ${changedNodes} layer(s).`);
+    figma.ui.postMessage({ type: 'fr-result', mode: 'replace', count, nodes: changedNodes });
+  } else if (msg.type === 'terminology') {
+    const nodes = getScopedNodes(msg.scope);
+    if (nodes.length === 0) {
+      figma.ui.postMessage({ type: 'term-result', mode: msg.action, violations: [], count: 0, noScope: true });
+      return;
+    }
+    const opts: ReplaceOpts = { matchCase: false, wholeWord: true, preserveCase: true };
+
+    if (msg.action === 'scan') {
+      const violations: Array<{ string: string; layer: string; term: string; suggestion: string; count: number }> = [];
+      for (const node of nodes) {
+        for (const rule of msg.rules) {
+          if (!rule.find) continue;
+          const c = applyReplace(node.characters, rule.find, rule.replace, opts).count;
+          if (c > 0) {
+            violations.push({ string: node.characters, layer: node.name, term: rule.find, suggestion: rule.replace, count: c });
+          }
+        }
+      }
+      const total = violations.reduce((a, v) => a + v.count, 0);
+      figma.ui.postMessage({ type: 'term-result', mode: 'scan', violations, count: total });
+      return;
+    }
+
+    saveSnapshot(nodes);
+    const { count, changedNodes } = await replaceInNodes(nodes, msg.rules, opts);
+    figma.notify(`Fixed ${count} term(s) in ${changedNodes} layer(s).`);
+    figma.ui.postMessage({ type: 'term-result', mode: 'fix', violations: [], count, nodes: changedNodes });
   } else if (msg.type === 'run-report') {
     const scope: Scope = (msg.scope === 'page' || msg.scope === 'all') ? msg.scope : 'selection';
     const nodes = getScopedNodes(scope);

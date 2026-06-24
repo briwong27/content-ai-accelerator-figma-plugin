@@ -115,6 +115,41 @@
 
     select:focus { outline: none; border-color: #888; }
 
+    .text-input, .text-area {
+      width: 100%;
+      padding: 8px 10px;
+      border: 1px solid #d8d8d8;
+      border-radius: 6px;
+      font-size: 13px;
+      color: #1a1a1a;
+      background: #fff;
+      font-family: inherit;
+    }
+
+    .text-area {
+      resize: vertical;
+      line-height: 1.5;
+      font-size: 12px;
+    }
+
+    .text-input:focus, .text-area:focus { outline: none; border-color: #888; }
+
+    .checkbox-group {
+      display: flex;
+      gap: 14px;
+    }
+
+    .checkbox-group label {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      cursor: pointer;
+      font-size: 12px;
+      color: #444;
+    }
+
+    .checkbox-group input[type="checkbox"] { accent-color: #1a1a1a; }
+
     .hidden { display: none !important; }
 
     /* --- Buttons --- */
@@ -305,8 +340,10 @@
 
   <div id="mainView">
   <div class="tab-bar">
-    <button class="tab-btn active" onclick="switchTab('localize')">Localize</button>
-    <button class="tab-btn" onclick="switchTab('report')">Review</button>
+    <button class="tab-btn active" data-tab="localize" onclick="switchTab('localize')">Localize</button>
+    <button class="tab-btn" data-tab="replace" onclick="switchTab('replace')">Replace</button>
+    <button class="tab-btn" data-tab="terms" onclick="switchTab('terms')">Terms</button>
+    <button class="tab-btn" data-tab="report" onclick="switchTab('report')">Review</button>
   </div>
 
   <!-- LOCALIZE TAB -->
@@ -359,6 +396,72 @@
       <button id="applyBtn">Apply</button>
       <button id="undoBtn">Undo</button>
     </div>
+  </div>
+
+  <!-- FIND & REPLACE TAB -->
+  <div id="tab-replace" class="tab-panel">
+    <div class="section">
+      <label class="group-label">Scope</label>
+      <div class="radio-group">
+        <label><input type="radio" name="frScope" value="selection" checked /> Selection</label>
+        <label><input type="radio" name="frScope" value="page" /> Current Page</label>
+        <label><input type="radio" name="frScope" value="all" /> All Pages</label>
+      </div>
+    </div>
+
+    <div class="section">
+      <label class="group-label">Find</label>
+      <input type="text" id="findInput" class="text-input" placeholder="Text to find" />
+    </div>
+
+    <div class="section">
+      <label class="group-label">Replace with</label>
+      <input type="text" id="replaceInput" class="text-input" placeholder="Replacement text" />
+    </div>
+
+    <div class="section">
+      <div class="checkbox-group">
+        <label><input type="checkbox" id="matchCase" /> Match case</label>
+        <label><input type="checkbox" id="wholeWord" /> Whole word</label>
+      </div>
+    </div>
+
+    <div class="button-row">
+      <button id="findBtn">Find</button>
+      <button id="replaceBtn">Replace all</button>
+    </div>
+
+    <p class="mode-help" id="frStatus"></p>
+  </div>
+
+  <!-- TERMINOLOGY TAB -->
+  <div id="tab-terms" class="tab-panel">
+    <div class="section">
+      <label class="group-label">Scope</label>
+      <div class="radio-group">
+        <label><input type="radio" name="termScope" value="selection" checked /> Selection</label>
+        <label><input type="radio" name="termScope" value="page" /> Current Page</label>
+        <label><input type="radio" name="termScope" value="all" /> All Pages</label>
+      </div>
+    </div>
+
+    <div class="section">
+      <label class="group-label">Rules — one per line: find = replace</label>
+      <textarea id="termRules" class="text-area" rows="7">click = select
+tap = select
+utilize = use
+in order to = to
+e-mail = email
+dropdown = drop-down</textarea>
+    </div>
+
+    <div class="button-row">
+      <button id="termCheckBtn">Check</button>
+      <button id="termFixBtn">Fix all</button>
+    </div>
+
+    <p class="mode-help" id="termStatus"></p>
+    <div id="termResults"></div>
   </div>
 
   <!-- REPORT TAB -->
@@ -449,8 +552,8 @@ Output valid JSON only. No markdown fences, no commentary, nothing outside the J
 
     // --- Tab switching ---
     function switchTab(name) {
-      document.querySelectorAll('.tab-btn').forEach((btn, i) => {
-        btn.classList.toggle('active', ['localize', 'report'][i] === name);
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.tab === name);
       });
       document.querySelectorAll('.tab-panel').forEach(panel => {
         panel.classList.toggle('active', panel.id === 'tab-' + name);
@@ -484,6 +587,81 @@ Output valid JSON only. No markdown fences, no commentary, nothing outside the J
     document.getElementById('undoBtn').addEventListener('click', () => {
       parent.postMessage({ pluginMessage: { type: 'undo' } }, '*');
     });
+
+    // --- Find & Replace tab ---
+    function sendFindReplace(action) {
+      const find = document.getElementById('findInput').value;
+      if (!find) {
+        document.getElementById('frStatus').textContent = 'Enter text to find.';
+        return;
+      }
+      const scope = document.querySelector('input[name="frScope"]:checked').value;
+      const replace = document.getElementById('replaceInput').value;
+      const matchCase = document.getElementById('matchCase').checked;
+      const wholeWord = document.getElementById('wholeWord').checked;
+      document.getElementById('frStatus').textContent = action === 'replace' ? 'Replacing…' : 'Searching…';
+      parent.postMessage({ pluginMessage: { type: 'find-replace', action, scope, find, replace, matchCase, wholeWord } }, '*');
+    }
+
+    document.getElementById('findBtn').addEventListener('click', () => sendFindReplace('count'));
+    document.getElementById('replaceBtn').addEventListener('click', () => sendFindReplace('replace'));
+
+    // --- Terminology tab ---
+    function parseRules() {
+      return document.getElementById('termRules').value
+        .split('\n')
+        .map(line => {
+          const idx = line.indexOf('=');
+          if (idx === -1) return null;
+          const find = line.slice(0, idx).trim();
+          const replace = line.slice(idx + 1).trim();
+          return find ? { find, replace } : null;
+        })
+        .filter(Boolean);
+    }
+
+    function sendTerminology(action) {
+      const rules = parseRules();
+      if (rules.length === 0) {
+        document.getElementById('termStatus').textContent = 'Add at least one rule (find = replace).';
+        return;
+      }
+      const scope = document.querySelector('input[name="termScope"]:checked').value;
+      document.getElementById('termResults').innerHTML = '';
+      document.getElementById('termStatus').textContent = action === 'fix' ? 'Fixing…' : 'Checking…';
+      parent.postMessage({ pluginMessage: { type: 'terminology', action, scope, rules } }, '*');
+    }
+
+    document.getElementById('termCheckBtn').addEventListener('click', () => sendTerminology('scan'));
+    document.getElementById('termFixBtn').addEventListener('click', () => sendTerminology('fix'));
+
+    function renderTermViolations(violations) {
+      const container = document.getElementById('termResults');
+      if (!violations.length) {
+        container.innerHTML = '';
+        return;
+      }
+      let html = '';
+      for (const v of violations) {
+        const snippet = v.string.length > 80 ? v.string.slice(0, 80) + '…' : v.string;
+        html += `
+          <div class="string-block">
+            <div class="string-text">"${esc(snippet)}"</div>
+            <div class="field-row">
+              <span class="field-label">Layer</span>
+              <span class="field-value">${esc(v.layer)}</span>
+            </div>
+            <div class="field-row">
+              <span class="field-label">Found</span>
+              <span class="field-value grade-c">${esc(v.term)}</span>
+              <span class="field-label" style="min-width:auto">→</span>
+              <span class="field-value grade-a">${esc(v.suggestion)}</span>
+              <span class="field-value">(${v.count})</span>
+            </div>
+          </div>`;
+      }
+      container.innerHTML = html;
+    }
 
     // --- Report tab ---
     function runReport() {
@@ -594,6 +772,35 @@ Output valid JSON only. No markdown fences, no commentary, nothing outside the J
         showReportError(msg.error);
         setReportStatus('');
         document.getElementById('analyzeBtn').disabled = false;
+      } else if (msg.type === 'fr-result') {
+        const status = document.getElementById('frStatus');
+        if (msg.noScope) {
+          status.textContent = 'No text layers found in scope.';
+        } else if (msg.mode === 'count') {
+          status.textContent = msg.count === 0
+            ? 'No matches found.'
+            : `${msg.count} match${msg.count === 1 ? '' : 'es'} found.`;
+        } else {
+          status.textContent = msg.count === 0
+            ? 'No matches to replace.'
+            : `Replaced ${msg.count} occurrence${msg.count === 1 ? '' : 's'} in ${msg.nodes} layer${msg.nodes === 1 ? '' : 's'}.`;
+        }
+      } else if (msg.type === 'term-result') {
+        const status = document.getElementById('termStatus');
+        if (msg.noScope) {
+          status.textContent = 'No text layers found in scope.';
+          document.getElementById('termResults').innerHTML = '';
+        } else if (msg.mode === 'scan') {
+          status.textContent = msg.count === 0
+            ? 'No terminology issues found. ✓'
+            : `${msg.count} issue${msg.count === 1 ? '' : 's'} found across ${msg.violations.length} layer-rule match${msg.violations.length === 1 ? '' : 'es'}.`;
+          renderTermViolations(msg.violations);
+        } else {
+          status.textContent = msg.count === 0
+            ? 'No terms to fix.'
+            : `Fixed ${msg.count} term${msg.count === 1 ? '' : 's'} in ${msg.nodes} layer${msg.nodes === 1 ? '' : 's'}.`;
+          document.getElementById('termResults').innerHTML = '';
+        }
       }
     };
 
