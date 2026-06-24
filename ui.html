@@ -71,6 +71,13 @@
       flex-wrap: wrap;
     }
 
+    .mode-help {
+      margin-top: 8px;
+      font-size: 11px;
+      line-height: 1.5;
+      color: #888;
+    }
+
     .radio-group label {
       display: flex;
       align-items: center;
@@ -319,6 +326,7 @@
         <label><input type="radio" name="mode" value="translate" checked /> Translate</label>
         <label><input type="radio" name="mode" value="stress" /> Stress Test</label>
       </div>
+      <p class="mode-help" id="modeHelp">Replaces text with an accurate translation in the chosen language. Use it to see how your design reads with real localized copy.</p>
     </div>
 
     <div class="section" id="translateSection">
@@ -450,11 +458,17 @@ Output valid JSON only. No markdown fences, no commentary, nothing outside the J
     }
 
     // --- Localize tab ---
+    const MODE_HELP = {
+      translate: 'Replaces text with an accurate translation in the chosen language. Use it to see how your design reads with real localized copy.',
+      stress: 'Deliberately makes text longer and denser to find where your layout breaks — truncation, overflow, or clipped buttons. The output is a worst-case pressure test, not readable copy.'
+    };
+
     document.querySelectorAll('input[name="mode"]').forEach(radio => {
       radio.addEventListener('change', () => {
         const isStress = document.querySelector('input[name="mode"]:checked').value === 'stress';
         document.getElementById('translateSection').classList.toggle('hidden', isStress);
         document.getElementById('stressSection').classList.toggle('hidden', !isStress);
+        document.getElementById('modeHelp').textContent = isStress ? MODE_HELP.stress : MODE_HELP.translate;
       });
     });
 
