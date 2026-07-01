@@ -343,6 +343,7 @@
     <button class="tab-btn active" data-tab="localize" onclick="switchTab('localize')">Localize</button>
     <button class="tab-btn" data-tab="replace" onclick="switchTab('replace')">Replace</button>
     <button class="tab-btn" data-tab="terms" onclick="switchTab('terms')">Terms</button>
+    <button class="tab-btn" data-tab="counter" onclick="switchTab('counter')">Counter</button>
     <button class="tab-btn" data-tab="report" onclick="switchTab('report')">Review</button>
   </div>
 
@@ -464,6 +465,25 @@ dropdown = drop-down</textarea>
 
     <p class="mode-help" id="termStatus"></p>
     <div id="termResults"></div>
+  </div>
+
+  <!-- COUNTER TAB -->
+  <div id="tab-counter" class="tab-panel">
+    <div class="section">
+      <label class="group-label">Scope</label>
+      <div class="radio-group">
+        <label><input type="radio" name="counterScope" value="selection" checked /> Selection</label>
+        <label><input type="radio" name="counterScope" value="page" /> Current Page</label>
+        <label><input type="radio" name="counterScope" value="all" /> All Pages</label>
+      </div>
+    </div>
+
+    <div class="button-row">
+      <button id="counterBtn" onclick="runCounter()">Count</button>
+    </div>
+
+    <div id="counterStatus"></div>
+    <div id="counterResults"></div>
   </div>
 
   <!-- REPORT TAB -->
@@ -678,6 +698,15 @@ Output valid JSON only. No markdown fences, no commentary, nothing outside the J
       container.innerHTML = html;
     }
 
+    // --- Counter tab ---
+    function runCounter() {
+      const scope = document.querySelector('input[name="counterScope"]:checked').value;
+      document.getElementById('counterStatus').textContent = 'Counting…';
+      document.getElementById('counterResults').innerHTML = '';
+      document.getElementById('counterBtn').disabled = true;
+      parent.postMessage({ pluginMessage: { type: 'counter', scope } }, '*');
+    }
+
     // --- Report tab ---
     function runReport() {
       const scope = document.querySelector('input[name="reportScope"]:checked').value;
@@ -821,6 +850,29 @@ Output valid JSON only. No markdown fences, no commentary, nothing outside the J
             : `Fixed ${msg.count} term${msg.count === 1 ? '' : 's'} in ${msg.nodes} layer${msg.nodes === 1 ? '' : 's'}.`;
           document.getElementById('termResults').innerHTML = '';
         }
+      } else if (msg.type === 'counter-result') {
+        const status = document.getElementById('counterStatus');
+        const results = document.getElementById('counterResults');
+        if (msg.noScope) {
+          status.textContent = 'No text layers found in scope.';
+          results.innerHTML = '';
+        } else {
+          status.textContent = '';
+          results.innerHTML = `
+            <div class="summary-block">
+              <div class="summary-title">Results</div>
+              <div class="summary-row">
+                <span>Characters</span>
+                <span>${msg.chars.toLocaleString()}</span>
+              </div>
+              <div class="summary-row">
+                <span>Words</span>
+                <span>${msg.words.toLocaleString()}</span>
+              </div>
+            </div>
+          `;
+        }
+        document.getElementById('counterBtn').disabled = false;
       }
     };
 

@@ -70,7 +70,12 @@ interface TerminologyMessage {
   rules: TermRule[];
 }
 
-type PluginMessage = ApplyMessage | UndoMessage | GetApiKeyMessage | SaveApiKeyMessage | GetTermRulesMessage | SaveTermRulesMessage | RunReportMessage | ResizeMessage | FindReplaceMessage | TerminologyMessage;
+interface CounterMessage {
+  type: 'counter';
+  scope: Scope;
+}
+
+type PluginMessage = ApplyMessage | UndoMessage | GetApiKeyMessage | SaveApiKeyMessage | GetTermRulesMessage | SaveTermRulesMessage | RunReportMessage | ResizeMessage | FindReplaceMessage | TerminologyMessage | CounterMessage;
 
 // --- Style runs ---
 // A run is a contiguous segment of text where fontName and fontSize are uniform.
@@ -548,5 +553,22 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
     } catch (err) {
       figma.ui.postMessage({ type: 'report-error', error: (err as Error).message });
     }
+  } else if (msg.type === 'counter') {
+    const nodes = getScopedNodes(msg.scope);
+    if (nodes.length === 0) {
+      figma.ui.postMessage({ type: 'counter-result', chars: 0, words: 0, noScope: true });
+      return;
+    }
+
+    let totalChars = 0;
+    let totalWords = 0;
+
+    for (const node of nodes) {
+      const text = node.characters;
+      totalChars += text.length;
+      totalWords += text.split(/\s+/).filter(word => word.length > 0).length;
+    }
+
+    figma.ui.postMessage({ type: 'counter-result', chars: totalChars, words: totalWords });
   }
 };
