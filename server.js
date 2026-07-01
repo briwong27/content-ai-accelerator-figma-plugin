@@ -52,7 +52,7 @@ const server = http.createServer(async (req, res) => {
         },
         body: JSON.stringify({
           model: 'claude-opus-4-8',
-          max_tokens: 2048,
+          max_tokens: 8000,
           system: systemPrompt,
           messages: [
             {
