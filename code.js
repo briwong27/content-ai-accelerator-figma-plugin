@@ -379,7 +379,7 @@ async function undoLocalization() {
     }
 }
 figma.ui.onmessage = async (msg) => {
-    var _a, _b;
+    var _a;
     try {
         if (msg.type === 'apply') {
             await applyLocalization(msg);
@@ -485,8 +485,10 @@ figma.ui.onmessage = async (msg) => {
                     throw new Error(errorMsg);
                 }
                 const data = await res.json();
-                const responseText = ((_b = data.content[0]) === null || _b === void 0 ? void 0 : _b.text) || '';
-                figma.ui.postMessage({ type: 'report-result', raw: responseText });
+                if (!data.report) {
+                    throw new Error(data.error || 'Empty response from server');
+                }
+                figma.ui.postMessage({ type: 'report-result', raw: data.report });
             }
             catch (err) {
                 let errorMsg = 'Unknown error';
@@ -553,7 +555,7 @@ figma.ui.onmessage = async (msg) => {
                     try {
                         data = JSON.parse(pluginData);
                     }
-                    catch (_c) {
+                    catch (_b) {
                         data = { label: '', hint: '', role: '', altText: '' };
                     }
                 }

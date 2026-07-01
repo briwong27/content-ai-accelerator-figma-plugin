@@ -624,9 +624,11 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
         throw new Error(errorMsg);
       }
 
-      const data = await res.json() as { content: Array<{ type: string; text: string }> };
-      const responseText = data.content[0]?.text || '';
-      figma.ui.postMessage({ type: 'report-result', raw: responseText });
+      const data = await res.json() as { report?: string; error?: string };
+      if (!data.report) {
+        throw new Error(data.error || 'Empty response from server');
+      }
+      figma.ui.postMessage({ type: 'report-result', raw: data.report });
     } catch (err) {
       let errorMsg = 'Unknown error';
       let errorDetails = '';
