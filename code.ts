@@ -344,24 +344,10 @@ function collectTextNodes(node: BaseNode): TextNode[] {
 
 function getScopedNodes(scope: Scope): TextNode[] {
   if (scope === 'selection') return figma.currentPage.selection.flatMap(collectTextNodes);
-  if (scope === 'page') {
-    const nodes = collectTextNodes(figma.currentPage);
-    console.log(`[Counter] Page scope: found ${nodes.length} text nodes on "${figma.currentPage.name}"`);
-    return nodes;
-  }
+  if (scope === 'page') return collectTextNodes(figma.currentPage);
   // 'all' scope - collect from all pages
-  console.log(`[Counter] Debug: figma.root.children length = ${figma.root.children.length}`);
-  figma.root.children.forEach((child, i) => {
-    console.log(`[Counter] Debug: child ${i} type=${child.type}, name=${child.name}`);
-  });
   const allPages = figma.root.children.filter(child => child.type === 'PAGE') as PageNode[];
-  const allNodes = allPages.flatMap(page => {
-    const pageNodes = collectTextNodes(page);
-    console.log(`[Counter] All pages scope: page "${page.name}" has ${pageNodes.length} text nodes`);
-    return pageNodes;
-  });
-  console.log(`[Counter] All pages scope: total ${allNodes.length} text nodes across ${allPages.length} pages`);
-  return allNodes;
+  return allPages.flatMap(page => collectTextNodes(page));
 }
 
 // --- Snapshot for undo ---
