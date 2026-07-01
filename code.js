@@ -485,10 +485,13 @@ figma.ui.onmessage = async (msg) => {
                     throw new Error(errorMsg);
                 }
                 const data = await res.json();
-                if (!data.report) {
+                console.log('Response JSON parsed:', JSON.stringify(data).substring(0, 100));
+                const report = data.report;
+                if (!report) {
+                    console.error('No report in response:', JSON.stringify(data));
                     throw new Error(data.error || 'Empty response from server');
                 }
-                figma.ui.postMessage({ type: 'report-result', raw: data.report });
+                figma.ui.postMessage({ type: 'report-result', raw: report });
             }
             catch (err) {
                 let errorMsg = 'Unknown error';
