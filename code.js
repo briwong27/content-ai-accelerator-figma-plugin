@@ -379,6 +379,7 @@ async function undoLocalization() {
     }
 }
 figma.ui.onmessage = async (msg) => {
+    var _a, _b;
     try {
         if (msg.type === 'apply') {
             await applyLocalization(msg);
@@ -457,19 +458,40 @@ figma.ui.onmessage = async (msg) => {
                 sendPluginError('report');
                 return;
             }
+            const apiKey = await figma.clientStorage.getAsync('anthropic-api-key');
+            if (!apiKey) {
+                console.error('No API key configured.');
+                sendPluginError('report');
+                return;
+            }
             const texts = nodes.map(n => n.characters);
             try {
-                const res = await fetch('http://localhost:3000/api/analyze-plugin', {
+                const res = await fetch('https://api.anthropic.com/v1/messages', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ texts, systemPrompt: msg.systemPrompt })
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'x-api-key': apiKey,
+                        'anthropic-version': '2023-06-01'
+                    },
+                    body: JSON.stringify({
+                        model: 'claude-opus-4-1',
+                        max_tokens: 2048,
+                        system: msg.systemPrompt,
+                        messages: [
+                            {
+                                role: 'user',
+                                content: `Please analyze the following UI text strings and provide grades and recommendations:\n\n${texts.map((t, i) => `${i + 1}. "${t}"`).join('\n')}`
+                            }
+                        ]
+                    })
                 });
                 if (!res.ok) {
                     const err = await res.json().catch(() => ({}));
-                    throw new Error(err.error || `Server error ${res.status}`);
+                    throw new Error(((_a = err.error) === null || _a === void 0 ? void 0 : _a.message) || `API error ${res.status}`);
                 }
                 const data = await res.json();
-                figma.ui.postMessage({ type: 'report-result', raw: JSON.stringify(data.report) });
+                const responseText = ((_b = data.content[0]) === null || _b === void 0 ? void 0 : _b.text) || '';
+                figma.ui.postMessage({ type: 'report-result', raw: responseText });
             }
             catch (err) {
                 console.error('Report analysis failed:', err);
@@ -513,7 +535,7 @@ figma.ui.onmessage = async (msg) => {
                     try {
                         data = JSON.parse(pluginData);
                     }
-                    catch (_a) {
+                    catch (_c) {
                         data = { label: '', hint: '', role: '', altText: '' };
                     }
                 }

@@ -591,22 +591,44 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
       return;
     }
 
+    const apiKey = await figma.clientStorage.getAsync('anthropic-api-key') as string | undefined;
+    if (!apiKey) {
+      console.error('No API key configured.');
+      sendPluginError('report');
+      return;
+    }
+
     const texts = nodes.map(n => n.characters);
 
     try {
-      const res = await fetch('http://localhost:3000/api/analyze-plugin', {
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ texts, systemPrompt: msg.systemPrompt })
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': apiKey,
+          'anthropic-version': '2023-06-01'
+        },
+        body: JSON.stringify({
+          model: 'claude-opus-4-1',
+          max_tokens: 2048,
+          system: msg.systemPrompt,
+          messages: [
+            {
+              role: 'user',
+              content: `Please analyze the following UI text strings and provide grades and recommendations:\n\n${texts.map((t, i) => `${i + 1}. "${t}"`).join('\n')}`
+            }
+          ]
+        })
       });
 
       if (!res.ok) {
-        const err = await res.json().catch(() => ({})) as { error?: string };
-        throw new Error(err.error || `Server error ${res.status}`);
+        const err = await res.json().catch(() => ({})) as { error?: { message?: string } };
+        throw new Error(err.error?.message || `API error ${res.status}`);
       }
 
-      const data = await res.json() as { report: unknown };
-      figma.ui.postMessage({ type: 'report-result', raw: JSON.stringify(data.report) });
+      const data = await res.json() as { content: Array<{ type: string; text: string }> };
+      const responseText = data.content[0]?.text || '';
+      figma.ui.postMessage({ type: 'report-result', raw: responseText });
     } catch (err) {
       console.error('Report analysis failed:', err);
       sendPluginError('report');

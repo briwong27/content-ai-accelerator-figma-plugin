@@ -583,6 +583,16 @@ dropdown = drop-down</textarea>
   <!-- REPORT TAB -->
   <div id="tab-report" class="tab-panel">
     <div id="reportError" class="error-banner hidden">Unfortunately, we can't complete this task right now. Try again later.</div>
+
+    <div class="section">
+      <label class="group-label">Anthropic API Key</label>
+      <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+        <input type="password" id="apiKeyInput" class="text-input" placeholder="Paste your API key" style="flex: 1;" />
+        <button id="saveApiKeyBtn" onclick="saveApiKey()" style="flex: 0.5; background: #1a1a1a; color: #fff;">Save</button>
+      </div>
+      <div id="apiKeyStatus" style="font-size: 11px; color: #888;"></div>
+    </div>
+
     <p class="mode-help" style="margin-top:0;margin-bottom:16px">Review your UI text against content design best practices and accessibility guidelines. Get grades for style guide compliance and accessibility, plus specific recommendations for improvement.</p>
 
     <div class="section">
@@ -1071,6 +1081,27 @@ Output valid JSON only. No markdown fences, no commentary, nothing outside the J
     function clearError(tab) {
       document.getElementById(tab + 'Error').classList.add('hidden');
     }
+
+    // --- API Key management ---
+    function saveApiKey() {
+      const key = document.getElementById('apiKeyInput').value.trim();
+      if (!key) {
+        document.getElementById('apiKeyStatus').textContent = 'Please enter an API key.';
+        return;
+      }
+      parent.postMessage({ pluginMessage: { type: 'save-api-key', key } }, '*');
+      document.getElementById('apiKeyStatus').textContent = 'API key saved securely.';
+      document.getElementById('apiKeyInput').value = '';
+      setTimeout(() => {
+        document.getElementById('apiKeyStatus').textContent = '';
+      }, 3000);
+    }
+
+    function loadApiKey() {
+      parent.postMessage({ pluginMessage: { type: 'get-api-key' } }, '*');
+    }
+
+    loadApiKey();
 
     // --- Message handler from plugin code ---
     window.onmessage = (event) => {
