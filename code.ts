@@ -75,7 +75,17 @@ interface CounterMessage {
   scope: Scope;
 }
 
-type PluginMessage = ApplyMessage | UndoMessage | GetApiKeyMessage | SaveApiKeyMessage | GetTermRulesMessage | SaveTermRulesMessage | RunReportMessage | ResizeMessage | FindReplaceMessage | TerminologyMessage | CounterMessage;
+interface GetStyleguideMessage {
+  type: 'get-styleguide';
+}
+
+interface SaveStyleguideMessage {
+  type: 'save-styleguide';
+  styleguide: string;
+  customRules?: string;
+}
+
+type PluginMessage = ApplyMessage | UndoMessage | GetApiKeyMessage | SaveApiKeyMessage | GetTermRulesMessage | SaveTermRulesMessage | RunReportMessage | ResizeMessage | FindReplaceMessage | TerminologyMessage | CounterMessage | GetStyleguideMessage | SaveStyleguideMessage;
 
 // --- Style runs ---
 // A run is a contiguous segment of text where fontName and fontSize are uniform.
@@ -570,5 +580,15 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
     }
 
     figma.ui.postMessage({ type: 'counter-result', chars: totalChars, words: totalWords });
+  } else if (msg.type === 'get-styleguide') {
+    const styleguide = await figma.clientStorage.getAsync('styleguide') as string | undefined;
+    const customRules = await figma.clientStorage.getAsync('custom-styleguide-rules') as string | undefined;
+    figma.ui.postMessage({ type: 'styleguide', styleguide: styleguide || 'shopify', customRules: customRules || '' });
+  } else if (msg.type === 'save-styleguide') {
+    await figma.clientStorage.setAsync('styleguide', msg.styleguide);
+    if (msg.customRules) {
+      await figma.clientStorage.setAsync('custom-styleguide-rules', msg.customRules);
+    }
+    figma.ui.postMessage({ type: 'styleguide-saved' });
   }
 };

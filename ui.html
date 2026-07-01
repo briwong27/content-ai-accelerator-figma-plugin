@@ -493,6 +493,25 @@ dropdown = drop-down</textarea>
     <p class="mode-help" style="margin-top:0;margin-bottom:16px">Review your UI text against content design best practices and accessibility guidelines. Get grades for style guide compliance and accessibility, plus specific recommendations for improvement.</p>
 
     <div class="section">
+      <label class="group-label">Style Guide</label>
+      <select id="styleguideSelect" onchange="handleStyleguideChange()">
+        <option value="shopify">Shopify Polaris</option>
+        <option value="apple">Apple HIG</option>
+        <option value="material">Material Design</option>
+        <option value="custom">Custom</option>
+      </select>
+    </div>
+
+    <div class="section hidden" id="customStyleguideSection">
+      <label class="group-label">Custom Style Guide Rules</label>
+      <textarea id="customStyleguide" class="text-area" rows="10" placeholder="Paste your custom style guide rules here..."></textarea>
+      <div style="margin-top: 8px; display: flex; gap: 8px;">
+        <button onclick="saveCustomStyleguide()" style="flex: 1;">Save Custom Rules</button>
+        <button onclick="resetToDefault()" style="flex: 1; background: #ebebea; color: #444;">Reset to Default</button>
+      </div>
+    </div>
+
+    <div class="section">
       <label class="group-label">Scope</label>
       <div class="radio-group">
         <label><input type="radio" name="reportScope" value="selection" checked /> Selection</label>
@@ -511,7 +530,40 @@ dropdown = drop-down</textarea>
   </div> <!-- end mainView -->
 
   <script>
-    const SYSTEM_PROMPT = `You are a content design reviewer evaluating UI text from Figma frames against two standards: the Shopify Polaris content style guide and WCAG 2.2 accessibility guidelines.
+    const STYLEGUIDE_RULES = {
+      shopify: `Shopify Polaris rules to apply:
+1. Sentence case: Only capitalise the first word and proper nouns. Title case in UI copy is a violation.
+2. Plain language: Use everyday words. Avoid jargon or unnecessary complexity.
+3. Device-agnostic verbs: Never use "click", "tap", "swipe". Use "select", "choose", "open", "go to".
+4. Active voice: Prefer active constructions. Passive is acceptable only when the actor is unknown.
+5. Specific CTAs: Button labels must describe the action. "Click here", "Submit" on ambiguous forms are violations.
+6. Error messages: Must identify the problem and tell the user what to do next.
+7. Positive framing: Describe what the user can do, not what they can't.
+8. Contractions: Polaris encourages natural contractions (you'll, don't, it's).`,
+      apple: `Apple Human Interface Guidelines rules to apply:
+1. Clarity: Text should be clear, concise, and direct. Avoid jargon and unnecessary words.
+2. Consistent terminology: Use consistent terms throughout your interface.
+3. Action-oriented labels: Use verbs for actions. Labels should describe the result, not the action itself.
+4. Accessibility: All text must be readable and descriptive for accessibility features.
+5. Positive language: Be positive and encouraging. Avoid negative phrasing when possible.
+6. Capitalization: Use sentence case for most UI elements. Only capitalize proper nouns.`,
+      material: `Material Design rules to apply:
+1. Clarity and conciseness: Use clear, concise language. Remove unnecessary words.
+2. Descriptive labels: Labels and headings should clearly describe their function or content.
+3. Actionable language: Use verbs that describe what will happen when the user interacts with the element.
+4. Consistent voice and tone: Maintain a consistent, friendly tone throughout your interface.
+5. Proper grammar and spelling: Ensure all text is properly formatted with correct grammar and spelling.
+6. Accessibility: Text should be easy to read and understand for all users, including those using accessibility features.`
+    };
+
+    const WCAG_RULES = `WCAG 2.2 rules to apply (text-analysable only):
+1. 2.4.4 Link purpose: Link/button text must make sense out of context. "Click here" or "Read more" alone fails.
+2. 2.4.6 Headings and labels: Must be descriptive. Vague headings like "Details" or "Info" are a B issue.
+3. 3.3.1 Error identification: Error messages must clearly state what went wrong.
+4. 3.3.2 Labels or instructions: Inputs must have descriptive labels.
+5. 2.4.2 Page titled: Primary headings should describe the screen's purpose.`;
+
+    const SYSTEM_PROMPT_TEMPLATE = `You are a content design reviewer evaluating UI text from Figma frames against content standards and accessibility guidelines.
 
 For each text string provided, output a JSON object with this exact structure:
 {
@@ -537,22 +589,9 @@ For each text string provided, output a JSON object with this exact structure:
 
 Grade scale: A = excellent, B = good with minor issues, C = needs improvement.
 
-Shopify Polaris rules to apply:
-1. Sentence case: Only capitalise the first word and proper nouns. Title case in UI copy is a violation.
-2. Plain language: Use everyday words. Avoid jargon or unnecessary complexity.
-3. Device-agnostic verbs: Never use "click", "tap", "swipe". Use "select", "choose", "open", "go to".
-4. Active voice: Prefer active constructions. Passive is acceptable only when the actor is unknown.
-5. Specific CTAs: Button labels must describe the action. "Click here", "Submit" on ambiguous forms are violations.
-6. Error messages: Must identify the problem and tell the user what to do next.
-7. Positive framing: Describe what the user can do, not what they can't.
-8. Contractions: Polaris encourages natural contractions (you'll, don't, it's).
+{STYLEGUIDE_RULES}
 
-WCAG 2.2 rules to apply (text-analysable only):
-1. 2.4.4 Link purpose: Link/button text must make sense out of context. "Click here" or "Read more" alone fails.
-2. 2.4.6 Headings and labels: Must be descriptive. Vague headings like "Details" or "Info" are a B issue.
-3. 3.3.1 Error identification: Error messages must clearly state what went wrong.
-4. 3.3.2 Labels or instructions: Inputs must have descriptive labels.
-5. 2.4.2 Page titled: Primary headings should describe the screen's purpose.
+{WCAG_RULES}
 
 Edge cases:
 - No text found: return a single result with string="[No text content]", Style guide grade="N/A", Accessibility grade="C", rationale noting missing alt text.
@@ -560,6 +599,16 @@ Edge cases:
 - Ambiguous element role: use the most conservative accessibility interpretation; note ambiguity in rationale.
 
 Output valid JSON only. No markdown fences, no commentary, nothing outside the JSON object.`;
+
+    let currentStyleguide = 'shopify';
+    let currentCustomRules = '';
+
+    function buildSystemPrompt(styleguide, customRules) {
+      let rules = styleguide === 'custom' ? customRules : STYLEGUIDE_RULES[styleguide] || STYLEGUIDE_RULES.shopify;
+      return SYSTEM_PROMPT_TEMPLATE
+        .replace('{STYLEGUIDE_RULES}', rules)
+        .replace('{WCAG_RULES}', WCAG_RULES);
+    }
 
     // --- Expanded report view ---
     function openReportView(html) {
@@ -673,6 +722,9 @@ Output valid JSON only. No markdown fences, no commentary, nothing outside the J
     // Request any saved ruleset on startup.
     parent.postMessage({ pluginMessage: { type: 'get-term-rules' } }, '*');
 
+    // Request saved styleguide on startup.
+    parent.postMessage({ pluginMessage: { type: 'get-styleguide' } }, '*');
+
     function renderTermViolations(violations) {
       const container = document.getElementById('termResults');
       if (!violations.length) {
@@ -711,13 +763,47 @@ Output valid JSON only. No markdown fences, no commentary, nothing outside the J
     }
 
     // --- Report tab ---
+    function handleStyleguideChange() {
+      const selected = document.getElementById('styleguideSelect').value;
+      const customSection = document.getElementById('customStyleguideSection');
+      customSection.classList.toggle('hidden', selected !== 'custom');
+      if (selected === 'custom' && !currentCustomRules) {
+        document.getElementById('customStyleguide').value = '';
+      } else if (selected === 'custom') {
+        document.getElementById('customStyleguide').value = currentCustomRules;
+      }
+    }
+
+    function saveCustomStyleguide() {
+      const rules = document.getElementById('customStyleguide').value;
+      if (!rules.trim()) {
+        alert('Please enter custom style guide rules.');
+        return;
+      }
+      currentCustomRules = rules;
+      currentStyleguide = 'custom';
+      parent.postMessage({ pluginMessage: { type: 'save-styleguide', styleguide: 'custom', customRules: rules } }, '*');
+      alert('Custom style guide saved.');
+    }
+
+    function resetToDefault() {
+      currentStyleguide = 'shopify';
+      currentCustomRules = '';
+      document.getElementById('styleguideSelect').value = 'shopify';
+      document.getElementById('customStyleguide').value = '';
+      document.getElementById('customStyleguideSection').classList.add('hidden');
+      parent.postMessage({ pluginMessage: { type: 'save-styleguide', styleguide: 'shopify', customRules: '' } }, '*');
+      alert('Reset to default style guide.');
+    }
+
     function runReport() {
       const scope = document.querySelector('input[name="reportScope"]:checked').value;
+      const systemPrompt = buildSystemPrompt(currentStyleguide, currentCustomRules);
       setReportStatus('Analyzing…');
       clearReportError();
       document.getElementById('reportResults').innerHTML = '';
       document.getElementById('analyzeBtn').disabled = true;
-      parent.postMessage({ pluginMessage: { type: 'run-report', scope, systemPrompt: SYSTEM_PROMPT } }, '*');
+      parent.postMessage({ pluginMessage: { type: 'run-report', scope, systemPrompt } }, '*');
     }
 
     function gradeClass(g) {
@@ -876,6 +962,16 @@ Output valid JSON only. No markdown fences, no commentary, nothing outside the J
           `;
         }
         document.getElementById('counterBtn').disabled = false;
+      } else if (msg.type === 'styleguide') {
+        currentStyleguide = msg.styleguide || 'shopify';
+        currentCustomRules = msg.customRules || '';
+        document.getElementById('styleguideSelect').value = currentStyleguide;
+        if (currentStyleguide === 'custom') {
+          document.getElementById('customStyleguideSection').classList.remove('hidden');
+          document.getElementById('customStyleguide').value = currentCustomRules;
+        } else {
+          document.getElementById('customStyleguideSection').classList.add('hidden');
+        }
       }
     };
 
