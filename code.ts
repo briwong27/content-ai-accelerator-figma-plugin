@@ -350,6 +350,10 @@ function getScopedNodes(scope: Scope): TextNode[] {
     return nodes;
   }
   // 'all' scope - collect from all pages
+  console.log(`[Counter] Debug: figma.root.children length = ${figma.root.children.length}`);
+  figma.root.children.forEach((child, i) => {
+    console.log(`[Counter] Debug: child ${i} type=${child.type}, name=${child.name}`);
+  });
   const allPages = figma.root.children.filter(child => child.type === 'PAGE') as PageNode[];
   const allNodes = allPages.flatMap(page => {
     const pageNodes = collectTextNodes(page);
