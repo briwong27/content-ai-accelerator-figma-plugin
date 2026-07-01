@@ -603,23 +603,13 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
     try {
       console.log('Starting report analysis with', texts.length, 'text nodes');
 
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
+      const res = await fetch('http://localhost:3000/api/analyze-plugin', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': apiKey,
-          'anthropic-version': '2023-06-01'
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          model: 'claude-opus-4-1',
-          max_tokens: 2048,
-          system: msg.systemPrompt,
-          messages: [
-            {
-              role: 'user',
-              content: `Please analyze the following UI text strings and provide grades and recommendations:\n\n${texts.map((t, i) => `${i + 1}. "${t}"`).join('\n')}`
-            }
-          ]
+          texts,
+          systemPrompt: msg.systemPrompt,
+          apiKey
         })
       });
 
