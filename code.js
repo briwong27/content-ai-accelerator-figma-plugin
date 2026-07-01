@@ -1,6 +1,29 @@
 "use strict";
 /// <reference path="./node_modules/@figma/plugin-typings/index.d.ts" />
 figma.showUI(__html__, { width: 320, height: 520 });
+function sendPluginError(tab) {
+    figma.ui.postMessage({ type: 'plugin-error', tab });
+}
+function tabForMessageType(type) {
+    switch (type) {
+        case 'apply':
+        case 'undo':
+            return 'localize';
+        case 'find-replace':
+            return 'replace';
+        case 'terminology':
+            return 'terms';
+        case 'counter':
+            return 'counter';
+        case 'load-accessibility-elements':
+        case 'save-accessibility-labels':
+            return 'accessibility';
+        case 'run-report':
+            return 'report';
+        default:
+            return null;
+    }
+}
 function getStyledRuns(node) {
     const len = node.characters.length;
     if (len === 0)
@@ -291,7 +314,12 @@ async function applyLocalization(msg) {
             console.error(`Skipped node ${node.id}:`, err);
         }
     }
-    figma.notify(`Applied to ${successCount} of ${nodes.length} text layers.`);
+    if (successCount === 0) {
+        sendPluginError('localize');
+    }
+    else {
+        figma.notify(`Applied to ${successCount} of ${nodes.length} text layers.`);
+    }
 }
 async function restoreToEnglish(nodes) {
     const originals = loadOriginals();
@@ -312,7 +340,10 @@ async function restoreToEnglish(nodes) {
             console.error(`Could not restore node ${node.id} to English:`, err);
         }
     }
-    if (restored === 0 && missing > 0) {
+    if (restored === 0 && missing === 0 && nodes.length > 0) {
+        sendPluginError('localize');
+    }
+    else if (restored === 0 && missing > 0) {
         figma.notify('No original English text on record for these layers.');
     }
     else {
@@ -340,101 +371,174 @@ async function undoLocalization() {
         }
     }
     figma.root.setPluginData('localization_snapshot', '');
-    figma.notify(`Restored ${successCount} text layer(s).`);
+    if (successCount === 0 && Object.keys(snapshot).length > 0) {
+        sendPluginError('localize');
+    }
+    else {
+        figma.notify(`Restored ${successCount} text layer(s).`);
+    }
 }
 figma.ui.onmessage = async (msg) => {
-    if (msg.type === 'apply') {
-        await applyLocalization(msg);
-    }
-    else if (msg.type === 'undo') {
-        await undoLocalization();
-    }
-    else if (msg.type === 'get-api-key') {
-        const key = await figma.clientStorage.getAsync('anthropic-api-key');
-        figma.ui.postMessage({ type: 'api-key', key: key || '' });
-    }
-    else if (msg.type === 'save-api-key') {
-        await figma.clientStorage.setAsync('anthropic-api-key', msg.key);
-        figma.ui.postMessage({ type: 'api-key-saved' });
-    }
-    else if (msg.type === 'get-term-rules') {
-        const rules = await figma.clientStorage.getAsync('terminology-rules');
-        figma.ui.postMessage({ type: 'term-rules', rules: rules || '' });
-    }
-    else if (msg.type === 'save-term-rules') {
-        await figma.clientStorage.setAsync('terminology-rules', msg.rules);
-    }
-    else if (msg.type === 'resize') {
-        figma.ui.resize(msg.width, msg.height);
-    }
-    else if (msg.type === 'find-replace') {
-        const nodes = getScopedNodes(msg.scope);
-        if (nodes.length === 0) {
-            figma.ui.postMessage({ type: 'fr-result', mode: msg.action, count: 0, noScope: true });
-            return;
+    try {
+        if (msg.type === 'apply') {
+            await applyLocalization(msg);
         }
-        const opts = { matchCase: msg.matchCase, wholeWord: msg.wholeWord, preserveCase: !msg.matchCase };
-        if (msg.action === 'count') {
-            const count = countMatches(nodes, msg.find, msg.replace, opts);
-            figma.ui.postMessage({ type: 'fr-result', mode: 'count', count });
-            return;
+        else if (msg.type === 'undo') {
+            await undoLocalization();
         }
-        saveSnapshot(nodes);
-        const { count, changedNodes } = await replaceInNodes(nodes, [{ find: msg.find, replace: msg.replace }], opts);
-        figma.notify(`Replaced ${count} occurrence(s) in ${changedNodes} layer(s).`);
-        figma.ui.postMessage({ type: 'fr-result', mode: 'replace', count, nodes: changedNodes });
-    }
-    else if (msg.type === 'terminology') {
-        const nodes = getScopedNodes(msg.scope);
-        if (nodes.length === 0) {
-            figma.ui.postMessage({ type: 'term-result', mode: msg.action, violations: [], count: 0, noScope: true });
-            return;
+        else if (msg.type === 'get-api-key') {
+            const key = await figma.clientStorage.getAsync('anthropic-api-key');
+            figma.ui.postMessage({ type: 'api-key', key: key || '' });
         }
-        const opts = { matchCase: false, wholeWord: true, preserveCase: true };
-        if (msg.action === 'scan') {
-            const violations = [];
-            for (const node of nodes) {
-                for (const rule of msg.rules) {
-                    if (!rule.find)
-                        continue;
-                    const c = applyReplace(node.characters, rule.find, rule.replace, opts).count;
-                    if (c > 0) {
-                        violations.push({ string: node.characters, layer: node.name, term: rule.find, suggestion: rule.replace, count: c });
+        else if (msg.type === 'save-api-key') {
+            await figma.clientStorage.setAsync('anthropic-api-key', msg.key);
+            figma.ui.postMessage({ type: 'api-key-saved' });
+        }
+        else if (msg.type === 'get-term-rules') {
+            const rules = await figma.clientStorage.getAsync('terminology-rules');
+            figma.ui.postMessage({ type: 'term-rules', rules: rules || '' });
+        }
+        else if (msg.type === 'save-term-rules') {
+            await figma.clientStorage.setAsync('terminology-rules', msg.rules);
+        }
+        else if (msg.type === 'resize') {
+            figma.ui.resize(msg.width, msg.height);
+        }
+        else if (msg.type === 'find-replace') {
+            const nodes = getScopedNodes(msg.scope);
+            if (nodes.length === 0) {
+                figma.ui.postMessage({ type: 'fr-result', mode: msg.action, count: 0, noScope: true });
+                return;
+            }
+            const opts = { matchCase: msg.matchCase, wholeWord: msg.wholeWord, preserveCase: !msg.matchCase };
+            if (msg.action === 'count') {
+                const count = countMatches(nodes, msg.find, msg.replace, opts);
+                figma.ui.postMessage({ type: 'fr-result', mode: 'count', count });
+                return;
+            }
+            saveSnapshot(nodes);
+            const { count, changedNodes } = await replaceInNodes(nodes, [{ find: msg.find, replace: msg.replace }], opts);
+            figma.notify(`Replaced ${count} occurrence(s) in ${changedNodes} layer(s).`);
+            figma.ui.postMessage({ type: 'fr-result', mode: 'replace', count, nodes: changedNodes });
+        }
+        else if (msg.type === 'terminology') {
+            const nodes = getScopedNodes(msg.scope);
+            if (nodes.length === 0) {
+                figma.ui.postMessage({ type: 'term-result', mode: msg.action, violations: [], count: 0, noScope: true });
+                return;
+            }
+            const opts = { matchCase: false, wholeWord: true, preserveCase: true };
+            if (msg.action === 'scan') {
+                const violations = [];
+                for (const node of nodes) {
+                    for (const rule of msg.rules) {
+                        if (!rule.find)
+                            continue;
+                        const c = applyReplace(node.characters, rule.find, rule.replace, opts).count;
+                        if (c > 0) {
+                            violations.push({ string: node.characters, layer: node.name, term: rule.find, suggestion: rule.replace, count: c });
+                        }
                     }
                 }
+                const total = violations.reduce((a, v) => a + v.count, 0);
+                figma.ui.postMessage({ type: 'term-result', mode: 'scan', violations, count: total });
+                return;
             }
-            const total = violations.reduce((a, v) => a + v.count, 0);
-            figma.ui.postMessage({ type: 'term-result', mode: 'scan', violations, count: total });
-            return;
+            saveSnapshot(nodes);
+            const { count, changedNodes } = await replaceInNodes(nodes, msg.rules, opts);
+            figma.notify(`Fixed ${count} term(s) in ${changedNodes} layer(s).`);
+            figma.ui.postMessage({ type: 'term-result', mode: 'fix', violations: [], count, nodes: changedNodes });
         }
-        saveSnapshot(nodes);
-        const { count, changedNodes } = await replaceInNodes(nodes, msg.rules, opts);
-        figma.notify(`Fixed ${count} term(s) in ${changedNodes} layer(s).`);
-        figma.ui.postMessage({ type: 'term-result', mode: 'fix', violations: [], count, nodes: changedNodes });
+        else if (msg.type === 'run-report') {
+            const scope = (msg.scope === 'page' || msg.scope === 'all') ? msg.scope : 'selection';
+            const nodes = getScopedNodes(scope);
+            if (nodes.length === 0) {
+                console.error('No text found in the selected scope.');
+                sendPluginError('report');
+                return;
+            }
+            const texts = nodes.map(n => n.characters);
+            try {
+                const res = await fetch('http://localhost:3000/api/analyze-plugin', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ texts, systemPrompt: msg.systemPrompt })
+                });
+                if (!res.ok) {
+                    const err = await res.json().catch(() => ({}));
+                    throw new Error(err.error || `Server error ${res.status}`);
+                }
+                const data = await res.json();
+                figma.ui.postMessage({ type: 'report-result', raw: JSON.stringify(data.report) });
+            }
+            catch (err) {
+                console.error('Report analysis failed:', err);
+                sendPluginError('report');
+            }
+        }
+        else if (msg.type === 'counter') {
+            const nodes = getScopedNodes(msg.scope);
+            if (nodes.length === 0) {
+                figma.ui.postMessage({ type: 'counter-result', chars: 0, words: 0, noScope: true });
+                return;
+            }
+            let totalChars = 0;
+            let totalWords = 0;
+            for (const node of nodes) {
+                const text = node.characters;
+                totalChars += text.length;
+                totalWords += text.split(/\s+/).filter(word => word.length > 0).length;
+            }
+            figma.ui.postMessage({ type: 'counter-result', chars: totalChars, words: totalWords });
+        }
+        else if (msg.type === 'get-styleguide') {
+            const styleguide = await figma.clientStorage.getAsync('styleguide');
+            const customRules = await figma.clientStorage.getAsync('custom-styleguide-rules');
+            figma.ui.postMessage({ type: 'styleguide', styleguide: styleguide || 'shopify', customRules: customRules || '' });
+        }
+        else if (msg.type === 'save-styleguide') {
+            await figma.clientStorage.setAsync('styleguide', msg.styleguide);
+            if (msg.customRules) {
+                await figma.clientStorage.setAsync('custom-styleguide-rules', msg.customRules);
+            }
+            figma.ui.postMessage({ type: 'styleguide-saved' });
+        }
+        else if (msg.type === 'load-accessibility-elements') {
+            const nodes = getScopedNodes(msg.scope);
+            const elements = [];
+            for (const node of nodes) {
+                const pluginData = node.getPluginData('accessibility');
+                let data = { label: '', hint: '', role: '', altText: '' };
+                if (pluginData) {
+                    try {
+                        data = JSON.parse(pluginData);
+                    }
+                    catch (_a) {
+                        data = { label: '', hint: '', role: '', altText: '' };
+                    }
+                }
+                elements.push(Object.assign({ id: node.id, name: node.name, type: 'text' }, data));
+            }
+            figma.ui.postMessage({ type: 'accessibility-elements', elements, count: elements.length });
+        }
+        else if (msg.type === 'save-accessibility-labels') {
+            let saved = 0;
+            const nodes = getScopedNodes('selection');
+            for (const node of nodes) {
+                if (msg.labels[node.id]) {
+                    const data = msg.labels[node.id];
+                    node.setPluginData('accessibility', JSON.stringify(data));
+                    saved++;
+                }
+            }
+            figma.notify(`Saved accessibility labels for ${saved} element(s).`);
+            figma.ui.postMessage({ type: 'accessibility-saved', saved });
+        }
     }
-    else if (msg.type === 'run-report') {
-        const scope = (msg.scope === 'page' || msg.scope === 'all') ? msg.scope : 'selection';
-        const nodes = getScopedNodes(scope);
-        if (nodes.length === 0) {
-            figma.ui.postMessage({ type: 'report-error', error: 'No text found in the selected scope.' });
-            return;
-        }
-        const texts = nodes.map(n => n.characters);
-        try {
-            const res = await fetch('http://localhost:3000/api/analyze-plugin', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ texts, systemPrompt: msg.systemPrompt })
-            });
-            if (!res.ok) {
-                const err = await res.json().catch(() => ({}));
-                throw new Error(err.error || `Server error ${res.status}`);
-            }
-            const data = await res.json();
-            figma.ui.postMessage({ type: 'report-result', raw: JSON.stringify(data.report) });
-        }
-        catch (err) {
-            figma.ui.postMessage({ type: 'report-error', error: err.message });
-        }
+    catch (err) {
+        console.error('Unhandled plugin error:', err);
+        const tab = tabForMessageType(msg.type);
+        if (tab)
+            sendPluginError(tab);
     }
 };

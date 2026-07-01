@@ -2,6 +2,31 @@
 
 figma.showUI(__html__, { width: 320, height: 520 });
 
+function sendPluginError(tab: string): void {
+  figma.ui.postMessage({ type: 'plugin-error', tab });
+}
+
+function tabForMessageType(type: string): string | null {
+  switch (type) {
+    case 'apply':
+    case 'undo':
+      return 'localize';
+    case 'find-replace':
+      return 'replace';
+    case 'terminology':
+      return 'terms';
+    case 'counter':
+      return 'counter';
+    case 'load-accessibility-elements':
+    case 'save-accessibility-labels':
+      return 'accessibility';
+    case 'run-report':
+      return 'report';
+    default:
+      return null;
+  }
+}
+
 type Scope = 'selection' | 'page' | 'all';
 type Mode = 'translate' | 'stress';
 type StressLang = 'de' | 'fi' | 'ar' | 'zh' | 'zh-TW' | 'ja';
@@ -428,7 +453,11 @@ async function applyLocalization(msg: ApplyMessage): Promise<void> {
     }
   }
 
-  figma.notify(`Applied to ${successCount} of ${nodes.length} text layers.`);
+  if (successCount === 0) {
+    sendPluginError('localize');
+  } else {
+    figma.notify(`Applied to ${successCount} of ${nodes.length} text layers.`);
+  }
 }
 
 async function restoreToEnglish(nodes: TextNode[]): Promise<void> {
@@ -450,7 +479,9 @@ async function restoreToEnglish(nodes: TextNode[]): Promise<void> {
     }
   }
 
-  if (restored === 0 && missing > 0) {
+  if (restored === 0 && missing === 0 && nodes.length > 0) {
+    sendPluginError('localize');
+  } else if (restored === 0 && missing > 0) {
     figma.notify('No original English text on record for these layers.');
   } else {
     figma.notify(`Restored ${restored} layer(s) to English.`);
@@ -478,10 +509,15 @@ async function undoLocalization(): Promise<void> {
   }
 
   figma.root.setPluginData('localization_snapshot', '');
-  figma.notify(`Restored ${successCount} text layer(s).`);
+  if (successCount === 0 && Object.keys(snapshot).length > 0) {
+    sendPluginError('localize');
+  } else {
+    figma.notify(`Restored ${successCount} text layer(s).`);
+  }
 }
 
 figma.ui.onmessage = async (msg: PluginMessage) => {
+  try {
   if (msg.type === 'apply') {
     await applyLocalization(msg);
   } else if (msg.type === 'undo') {
@@ -550,7 +586,8 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
     const nodes = getScopedNodes(scope);
 
     if (nodes.length === 0) {
-      figma.ui.postMessage({ type: 'report-error', error: 'No text found in the selected scope.' });
+      console.error('No text found in the selected scope.');
+      sendPluginError('report');
       return;
     }
 
@@ -571,7 +608,8 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
       const data = await res.json() as { report: unknown };
       figma.ui.postMessage({ type: 'report-result', raw: JSON.stringify(data.report) });
     } catch (err) {
-      figma.ui.postMessage({ type: 'report-error', error: (err as Error).message });
+      console.error('Report analysis failed:', err);
+      sendPluginError('report');
     }
   } else if (msg.type === 'counter') {
     const nodes = getScopedNodes(msg.scope);
@@ -637,5 +675,10 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
 
     figma.notify(`Saved accessibility labels for ${saved} element(s).`);
     figma.ui.postMessage({ type: 'accessibility-saved', saved });
+  }
+  } catch (err) {
+    console.error('Unhandled plugin error:', err);
+    const tab = tabForMessageType(msg.type);
+    if (tab) sendPluginError(tab);
   }
 };

@@ -17,30 +17,27 @@
 
     /* --- Tabs --- */
     .tab-bar {
-      display: flex;
+      padding: 12px 16px;
       border-bottom: 1px solid #e8e8e8;
       background: #f9f9f8;
-      padding: 0 16px;
     }
 
-    .tab-btn {
-      padding: 12px 0;
-      margin-right: 20px;
-      background: none;
-      border: none;
-      border-bottom: 2px solid transparent;
-      font-size: 12px;
-      font-weight: 500;
-      color: #aaa;
-      cursor: pointer;
-      letter-spacing: 0.02em;
-      transition: color 0.15s, border-color 0.15s;
-      margin-bottom: -1px;
-    }
-
-    .tab-btn.active {
+    #tabSelect {
+      width: 100%;
+      padding: 8px 10px;
+      border: 1px solid #d8d8d8;
+      border-radius: 6px;
+      font-size: 13px;
       color: #1a1a1a;
-      border-bottom-color: #1a1a1a;
+      background: #fff;
+      cursor: pointer;
+      font-family: inherit;
+      font-weight: 500;
+    }
+
+    #tabSelect:focus {
+      outline: none;
+      border-color: #888;
     }
 
     .tab-panel {
@@ -248,10 +245,10 @@
       margin-top: 12px;
     }
 
-    #reportError {
+    .error-banner {
       font-size: 12px;
       color: #b03a2e;
-      margin-top: 12px;
+      margin-bottom: 12px;
       background: #fdf2f2;
       border: 1px solid #f5c6c6;
       border-radius: 6px;
@@ -403,16 +400,19 @@
 
   <div id="mainView">
   <div class="tab-bar">
-    <button class="tab-btn active" data-tab="localize" onclick="switchTab('localize')">Localize</button>
-    <button class="tab-btn" data-tab="replace" onclick="switchTab('replace')">Replace</button>
-    <button class="tab-btn" data-tab="terms" onclick="switchTab('terms')">Terms</button>
-    <button class="tab-btn" data-tab="counter" onclick="switchTab('counter')">Counter</button>
-    <button class="tab-btn" data-tab="accessibility" onclick="switchTab('accessibility')">Accessibility</button>
-    <button class="tab-btn" data-tab="report" onclick="switchTab('report')">Review</button>
+    <select id="tabSelect" onchange="switchTab(this.value)">
+      <option value="localize">Localize</option>
+      <option value="replace">Replace</option>
+      <option value="terms">Terms</option>
+      <option value="counter">Counter</option>
+      <option value="accessibility">Accessibility</option>
+      <option value="report">Review</option>
+    </select>
   </div>
 
   <!-- LOCALIZE TAB -->
   <div id="tab-localize" class="tab-panel active">
+    <div id="localizeError" class="error-banner hidden">Unfortunately, we can't complete this task right now. Try again later.</div>
     <div class="section">
       <label class="group-label">Scope</label>
       <div class="radio-group">
@@ -465,6 +465,7 @@
 
   <!-- FIND & REPLACE TAB -->
   <div id="tab-replace" class="tab-panel">
+    <div id="replaceError" class="error-banner hidden">Unfortunately, we can't complete this task right now. Try again later.</div>
     <div class="section">
       <label class="group-label">Scope</label>
       <div class="radio-group">
@@ -501,6 +502,7 @@
 
   <!-- TERMINOLOGY TAB -->
   <div id="tab-terms" class="tab-panel">
+    <div id="termsError" class="error-banner hidden">Unfortunately, we can't complete this task right now. Try again later.</div>
     <p class="mode-help" style="margin-top:0;margin-bottom:16px">Enforce preferred wording across your designs. Edit the rules below — one per line as <b>find = replace</b>. <b>Check</b> lists every match without changing anything; <b>Fix all</b> rewrites them in place (undoable). Matching ignores case and only catches whole words. Your rules save automatically.</p>
 
     <div class="section">
@@ -533,6 +535,7 @@ dropdown = drop-down</textarea>
 
   <!-- COUNTER TAB -->
   <div id="tab-counter" class="tab-panel">
+    <div id="counterError" class="error-banner hidden">Unfortunately, we can't complete this task right now. Try again later.</div>
     <p class="mode-help" style="margin-top:0;margin-bottom:16px">Count the total number of characters and words in your text layers. This helps you understand content length and plan for localization across different languages.</p>
 
     <div class="section">
@@ -554,6 +557,7 @@ dropdown = drop-down</textarea>
 
   <!-- ACCESSIBILITY TAB -->
   <div id="tab-accessibility" class="tab-panel">
+    <div id="accessibilityError" class="error-banner hidden">Unfortunately, we can't complete this task right now. Try again later.</div>
     <p class="mode-help" style="margin-top:0;margin-bottom:16px">Add descriptive labels and hints to elements for screen readers and assistive technology. Labels are stored in Figma layer metadata and help ensure your designs are accessible to all users.</p>
 
     <div class="section">
@@ -578,6 +582,7 @@ dropdown = drop-down</textarea>
 
   <!-- REPORT TAB -->
   <div id="tab-report" class="tab-panel">
+    <div id="reportError" class="error-banner hidden">Unfortunately, we can't complete this task right now. Try again later.</div>
     <p class="mode-help" style="margin-top:0;margin-bottom:16px">Review your UI text against content design best practices and accessibility guidelines. Get grades for style guide compliance and accessibility, plus specific recommendations for improvement.</p>
 
     <div class="section">
@@ -611,7 +616,6 @@ dropdown = drop-down</textarea>
     <button id="analyzeBtn" onclick="runReport()">Analyze</button>
 
     <div id="reportStatus"></div>
-    <div id="reportError" class="hidden"></div>
     <div id="reportResults"></div>
   </div>
 
@@ -714,9 +718,7 @@ Output valid JSON only. No markdown fences, no commentary, nothing outside the J
 
     // --- Tab switching ---
     function switchTab(name) {
-      document.querySelectorAll('.tab-btn').forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.tab === name);
-      });
+      document.getElementById('tabSelect').value = name;
       document.querySelectorAll('.tab-panel').forEach(panel => {
         panel.classList.toggle('active', panel.id === 'tab-' + name);
       });
@@ -738,6 +740,7 @@ Output valid JSON only. No markdown fences, no commentary, nothing outside the J
     });
 
     document.getElementById('applyBtn').addEventListener('click', () => {
+      clearError('localize');
       const scope = document.querySelector('input[name="scope"]:checked').value;
       const mode = document.querySelector('input[name="mode"]:checked').value;
       const lang = mode === 'stress'
@@ -747,11 +750,13 @@ Output valid JSON only. No markdown fences, no commentary, nothing outside the J
     });
 
     document.getElementById('undoBtn').addEventListener('click', () => {
+      clearError('localize');
       parent.postMessage({ pluginMessage: { type: 'undo' } }, '*');
     });
 
     // --- Find & Replace tab ---
     function sendFindReplace(action) {
+      clearError('replace');
       const find = document.getElementById('findInput').value;
       if (!find) {
         document.getElementById('frStatus').textContent = 'Enter text to find.';
@@ -783,6 +788,7 @@ Output valid JSON only. No markdown fences, no commentary, nothing outside the J
     }
 
     function sendTerminology(action) {
+      clearError('terms');
       const rules = parseRules();
       if (rules.length === 0) {
         document.getElementById('termStatus').textContent = 'Add at least one rule (find = replace).';
@@ -843,6 +849,7 @@ Output valid JSON only. No markdown fences, no commentary, nothing outside the J
 
     // --- Counter tab ---
     function runCounter() {
+      clearError('counter');
       const scope = document.querySelector('input[name="counterScope"]:checked').value;
       document.getElementById('counterStatus').textContent = 'Counting…';
       document.getElementById('counterResults').innerHTML = '';
@@ -852,6 +859,7 @@ Output valid JSON only. No markdown fences, no commentary, nothing outside the J
 
     // --- Accessibility tab ---
     function loadAccessibilityElements() {
+      clearError('accessibility');
       const scope = document.querySelector('input[name="accessScope"]:checked').value;
       document.getElementById('accessibilityStatus').textContent = 'Loading elements…';
       document.getElementById('accessibilityElements').innerHTML = '';
@@ -984,7 +992,7 @@ Output valid JSON only. No markdown fences, no commentary, nothing outside the J
       const scope = document.querySelector('input[name="reportScope"]:checked').value;
       const systemPrompt = buildSystemPrompt(currentStyleguide, currentCustomRules);
       setReportStatus('Analyzing…');
-      clearReportError();
+      clearError('report');
       document.getElementById('reportResults').innerHTML = '';
       document.getElementById('analyzeBtn').disabled = true;
       parent.postMessage({ pluginMessage: { type: 'run-report', scope, systemPrompt } }, '*');
@@ -1056,14 +1064,12 @@ Output valid JSON only. No markdown fences, no commentary, nothing outside the J
       document.getElementById('reportStatus').textContent = msg;
     }
 
-    function showReportError(msg) {
-      const el = document.getElementById('reportError');
-      el.textContent = msg;
-      el.classList.remove('hidden');
+    function showError(tab) {
+      document.getElementById(tab + 'Error').classList.remove('hidden');
     }
 
-    function clearReportError() {
-      document.getElementById('reportError').classList.add('hidden');
+    function clearError(tab) {
+      document.getElementById(tab + 'Error').classList.add('hidden');
     }
 
     // --- Message handler from plugin code ---
@@ -1081,14 +1087,26 @@ Output valid JSON only. No markdown fences, no commentary, nothing outside the J
           setReportStatus('');
           renderResults(parsed);
         } catch {
-          showReportError('Could not parse response. Try again.');
+          showError('report');
           setReportStatus('');
         }
         document.getElementById('analyzeBtn').disabled = false;
-      } else if (msg.type === 'report-error') {
-        showReportError(msg.error);
-        setReportStatus('');
-        document.getElementById('analyzeBtn').disabled = false;
+      } else if (msg.type === 'plugin-error') {
+        showError(msg.tab);
+        if (msg.tab === 'counter') {
+          document.getElementById('counterStatus').textContent = '';
+          document.getElementById('counterBtn').disabled = false;
+        } else if (msg.tab === 'accessibility') {
+          document.getElementById('accessibilityStatus').textContent = '';
+          document.getElementById('loadElementsBtn').disabled = false;
+        } else if (msg.tab === 'report') {
+          setReportStatus('');
+          document.getElementById('analyzeBtn').disabled = false;
+        } else if (msg.tab === 'replace') {
+          document.getElementById('frStatus').textContent = '';
+        } else if (msg.tab === 'terms') {
+          document.getElementById('termStatus').textContent = '';
+        }
       } else if (msg.type === 'fr-result') {
         const status = document.getElementById('frStatus');
         if (msg.noScope) {
