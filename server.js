@@ -74,9 +74,26 @@ const server = http.createServer(async (req, res) => {
       }
 
       const data = await anthropicRes.json();
+      console.log('API response structure:', JSON.stringify(data, null, 2));
+
+      if (!data.content || !Array.isArray(data.content) || data.content.length === 0) {
+        console.error('❌ Unexpected API response structure - no content array');
+        res.writeHead(500);
+        res.end(JSON.stringify({ error: 'Invalid API response structure' }));
+        return;
+      }
+
+      const responseText = data.content[0].text;
+      if (!responseText) {
+        console.error('❌ No text in first content item');
+        res.writeHead(500);
+        res.end(JSON.stringify({ error: 'No text in API response' }));
+        return;
+      }
+
       console.log('✓ Success! Sending response back to plugin');
       res.writeHead(200);
-      res.end(JSON.stringify({ report: data.content[0].text }));
+      res.end(JSON.stringify({ report: responseText }));
     } catch (err) {
       console.error('❌ Server error:', err);
       res.writeHead(500);
