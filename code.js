@@ -237,11 +237,16 @@ function getScopedNodes(scope) {
     }
     if (scope === 'page') {
         // Current Frame: count text only from within Frame objects (exclude text outside frames)
-        return collectTextNodesInFrames(figma.currentPage);
+        const framesOnly = collectTextNodesInFrames(figma.currentPage);
+        const allText = collectTextNodes(figma.currentPage);
+        console.log(`[Counter] Current Frame - Frames only: ${framesOnly.length}, All text: ${allText.length}`);
+        return framesOnly;
     }
     // 'all' scope: count all text including text outside frames
     const allPages = figma.root.children.filter(child => child.type === 'PAGE');
-    return allPages.flatMap(page => collectTextNodes(page));
+    const result = allPages.flatMap(page => collectTextNodes(page));
+    console.log(`[Counter] All Frames - Total text: ${result.length}`);
+    return result;
 }
 function saveSnapshot(nodes) {
     const snapshot = {};
