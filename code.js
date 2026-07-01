@@ -219,13 +219,25 @@ function collectTextNodes(node) {
     return [];
 }
 function getScopedNodes(scope) {
-    if (scope === 'selection')
+    console.log(`[getScopedNodes] scope=${scope}`);
+    if (scope === 'selection') {
+        console.log(`[getScopedNodes] Selection scope`);
         return figma.currentPage.selection.flatMap(collectTextNodes);
-    if (scope === 'page')
+    }
+    if (scope === 'page') {
+        console.log(`[getScopedNodes] Page scope, currentPage="${figma.currentPage.name}"`);
         return collectTextNodes(figma.currentPage);
+    }
     // 'all' scope - collect from all pages
+    console.log(`[getScopedNodes] All scope, total pages=${figma.root.children.length}`);
     const allPages = figma.root.children.filter(child => child.type === 'PAGE');
-    return allPages.flatMap(page => collectTextNodes(page));
+    console.log(`[getScopedNodes] Filtered to ${allPages.length} PAGE type children`);
+    const result = allPages.flatMap(page => {
+        console.log(`[getScopedNodes] Processing page "${page.name}"`);
+        return collectTextNodes(page);
+    });
+    console.log(`[getScopedNodes] All scope returning ${result.length} nodes`);
+    return result;
 }
 function saveSnapshot(nodes) {
     const snapshot = {};
@@ -524,7 +536,9 @@ figma.ui.onmessage = async (msg) => {
             }
         }
         else if (msg.type === 'counter') {
+            console.log(`[Counter] Running counter with scope: ${msg.scope}`);
             const nodes = getScopedNodes(msg.scope);
+            console.log(`[Counter] Got ${nodes.length} text nodes`);
             if (nodes.length === 0) {
                 figma.ui.postMessage({ type: 'counter-result', chars: 0, words: 0, noScope: true });
                 return;
@@ -536,6 +550,7 @@ figma.ui.onmessage = async (msg) => {
                 totalChars += text.length;
                 totalWords += text.split(/\s+/).filter(word => word.length > 0).length;
             }
+            console.log(`[Counter] Final result: ${totalChars} chars, ${totalWords} words`);
             figma.ui.postMessage({ type: 'counter-result', chars: totalChars, words: totalWords });
         }
         else if (msg.type === 'get-styleguide') {
