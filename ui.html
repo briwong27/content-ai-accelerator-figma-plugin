@@ -549,6 +549,7 @@ dropdown = drop-down</textarea>
 
     <div class="button-row">
       <button id="counterBtn" onclick="runCounter()">Count</button>
+      <button id="counterResetBtn" onclick="resetCounter()" style="flex: 1; background: #ebebea; color: #444;">Reset</button>
     </div>
 
     <div id="counterStatus"></div>
@@ -869,6 +870,12 @@ Output valid JSON only. No markdown fences, no commentary, nothing outside the J
       document.getElementById('counterResults').innerHTML = '';
       document.getElementById('counterBtn').disabled = true;
       parent.postMessage({ pluginMessage: { type: 'counter', scope } }, '*');
+    }
+
+    function resetCounter() {
+      document.getElementById('counterStatus').textContent = '';
+      document.getElementById('counterResults').innerHTML = '';
+      clearError('counter');
     }
 
     // --- Accessibility tab ---
