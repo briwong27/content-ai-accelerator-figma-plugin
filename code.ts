@@ -633,10 +633,27 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
       const responseText = data.content[0]?.text || '';
       figma.ui.postMessage({ type: 'report-result', raw: responseText });
     } catch (err) {
-      const errorMsg = err instanceof Error ? err.message : String(err);
-      console.error('Report analysis failed:', errorMsg, err);
-      if (errorMsg.includes('Failed to fetch')) {
+      let errorMsg = 'Unknown error';
+      let errorDetails = '';
+
+      if (err instanceof Error) {
+        errorMsg = err.message;
+        errorDetails = err.stack || '';
+      } else if (typeof err === 'object' && err !== null) {
+        errorMsg = JSON.stringify(err);
+        errorDetails = JSON.stringify(err, null, 2);
+      } else {
+        errorMsg = String(err);
+      }
+
+      console.error('Report analysis failed:', errorMsg);
+      console.error('Error details:', errorDetails);
+      console.error('Full error object:', err);
+
+      if (errorMsg.includes('Failed to fetch') || errorMsg.includes('fetch')) {
         figma.ui.postMessage({ type: 'report-error', error: 'Network error: Could not reach the API. Check your internet connection.' });
+      } else if (errorMsg.includes('401') || errorMsg.includes('Unauthorized')) {
+        figma.ui.postMessage({ type: 'report-error', error: 'API Error: Invalid API key. Check that your key is correct.' });
       } else {
         figma.ui.postMessage({ type: 'report-error', error: `API Error: ${errorMsg}` });
       }
