@@ -236,17 +236,18 @@ function getScopedNodes(scope) {
         return figma.currentPage.selection.flatMap(collectTextNodes);
     }
     if (scope === 'page') {
-        // Current Frame: count text only from within Frame objects (exclude text outside frames)
-        const framesOnly = collectTextNodesInFrames(figma.currentPage);
-        const allText = collectTextNodes(figma.currentPage);
-        console.log(`[Counter] Current Frame - Frames only: ${framesOnly.length}, All text: ${allText.length}`);
-        return framesOnly;
+        // Current Frame: if a frame is selected, count that frame; otherwise return empty to trigger error
+        const selectedFrames = figma.currentPage.selection.filter(node => node.type === 'FRAME');
+        if (selectedFrames.length > 0) {
+            // Count text from the first selected frame
+            return collectTextNodes(selectedFrames[0]);
+        }
+        // No frame selected - return empty to trigger error message
+        return [];
     }
-    // 'all' scope: count all text including text outside frames
-    const allPages = figma.root.children.filter(child => child.type === 'PAGE');
-    const result = allPages.flatMap(page => collectTextNodes(page));
-    console.log(`[Counter] All Frames - Total text: ${result.length}`);
-    return result;
+    // 'all' scope: count all text on the page
+    const allText = collectTextNodes(figma.currentPage);
+    return allText;
 }
 function saveSnapshot(nodes) {
     const snapshot = {};
@@ -547,7 +548,11 @@ figma.ui.onmessage = async (msg) => {
         else if (msg.type === 'counter') {
             const nodes = getScopedNodes(msg.scope);
             if (nodes.length === 0) {
-                figma.ui.postMessage({ type: 'counter-result', chars: 0, words: 0, noScope: true });
+                let errorMessage = 'No text in scope';
+                if (msg.scope === 'page') {
+                    errorMessage = 'Please select a frame first';
+                }
+                figma.ui.postMessage({ type: 'counter-result', chars: 0, words: 0, noScope: true, message: errorMessage });
                 return;
             }
             let totalChars = 0;

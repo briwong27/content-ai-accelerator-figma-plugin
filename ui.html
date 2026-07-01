@@ -1240,7 +1240,7 @@ Output valid JSON only. No markdown fences, no commentary, nothing outside the J
         const status = document.getElementById('counterStatus');
         const results = document.getElementById('counterResults');
         if (msg.noScope) {
-          status.textContent = 'No text layers found in scope.';
+          status.textContent = msg.message || 'No text layers found in scope.';
           results.innerHTML = '';
         } else {
           status.textContent = '';
