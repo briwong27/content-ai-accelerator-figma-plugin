@@ -582,7 +582,7 @@ dropdown = drop-down</textarea>
 
   <!-- REPORT TAB -->
   <div id="tab-report" class="tab-panel">
-    <div id="reportError" class="error-banner hidden">Unfortunately, we can't complete this task right now. Try again later.</div>
+    <div id="reportError" class="error-banner hidden" data-default="Unfortunately, we can't complete this task right now. Try again later.">Unfortunately, we can't complete this task right now. Try again later.</div>
 
     <div class="section">
       <label class="group-label">Anthropic API Key</label>
@@ -1079,7 +1079,12 @@ Output valid JSON only. No markdown fences, no commentary, nothing outside the J
     }
 
     function clearError(tab) {
-      document.getElementById(tab + 'Error').classList.add('hidden');
+      const errorEl = document.getElementById(tab + 'Error');
+      errorEl.classList.add('hidden');
+      const defaultMsg = errorEl.getAttribute('data-default');
+      if (defaultMsg) {
+        errorEl.textContent = defaultMsg;
+      }
     }
 
     // --- API Key management ---
@@ -1121,6 +1126,14 @@ Output valid JSON only. No markdown fences, no commentary, nothing outside the J
           showError('report');
           setReportStatus('');
         }
+        document.getElementById('analyzeBtn').disabled = false;
+      } else if (msg.type === 'report-error') {
+        const errorEl = document.getElementById('reportError');
+        if (msg.error) {
+          errorEl.textContent = msg.error;
+        }
+        showError('report');
+        setReportStatus('');
         document.getElementById('analyzeBtn').disabled = false;
       } else if (msg.type === 'plugin-error') {
         showError(msg.tab);

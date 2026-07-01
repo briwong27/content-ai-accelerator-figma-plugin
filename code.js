@@ -460,8 +460,8 @@ figma.ui.onmessage = async (msg) => {
             }
             const apiKey = await figma.clientStorage.getAsync('anthropic-api-key');
             if (!apiKey) {
-                console.error('No API key configured.');
-                sendPluginError('report');
+                console.error('No API key configured. Please enter your Anthropic API key in the Review tab.');
+                figma.ui.postMessage({ type: 'report-error', error: 'No API key configured. Please enter your Anthropic API key in the Review tab.' });
                 return;
             }
             const texts = nodes.map(n => n.characters);
@@ -487,15 +487,17 @@ figma.ui.onmessage = async (msg) => {
                 });
                 if (!res.ok) {
                     const err = await res.json().catch(() => ({}));
-                    throw new Error(((_a = err.error) === null || _a === void 0 ? void 0 : _a.message) || `API error ${res.status}`);
+                    const errorMsg = ((_a = err.error) === null || _a === void 0 ? void 0 : _a.message) || `API error ${res.status}`;
+                    throw new Error(errorMsg);
                 }
                 const data = await res.json();
                 const responseText = ((_b = data.content[0]) === null || _b === void 0 ? void 0 : _b.text) || '';
                 figma.ui.postMessage({ type: 'report-result', raw: responseText });
             }
             catch (err) {
-                console.error('Report analysis failed:', err);
-                sendPluginError('report');
+                const errorMsg = err.message || 'Unknown error';
+                console.error('Report analysis failed:', errorMsg);
+                figma.ui.postMessage({ type: 'report-error', error: `API Error: ${errorMsg}` });
             }
         }
         else if (msg.type === 'counter') {
