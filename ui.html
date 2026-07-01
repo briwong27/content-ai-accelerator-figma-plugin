@@ -584,17 +584,13 @@ dropdown = drop-down</textarea>
   <div id="tab-report" class="tab-panel">
     <div id="reportError" class="error-banner hidden" data-default="Unfortunately, we can't complete this task right now. Try again later.">Unfortunately, we can't complete this task right now. Try again later.</div>
 
-    <div class="section">
+    <div id="apiKeySection" class="section">
       <label class="group-label">Anthropic API Key</label>
-      <div id="apiKeyConfigured" style="display: none; font-size: 12px; color: #2e7d5e; padding: 8px; background: #e8f5e9; border-radius: 6px; margin-bottom: 8px;">
-        ✓ API key configured
-      </div>
       <div id="apiKeyForm" style="display: none; gap: 8px; margin-bottom: 8px; flex-direction: row;">
         <input type="password" id="apiKeyInput" class="text-input" placeholder="Paste your API key" style="flex: 1;" />
         <button id="saveApiKeyBtn" onclick="saveApiKey()" style="flex: 0.5; background: #1a1a1a; color: #fff;">Save</button>
       </div>
       <div id="apiKeyStatus" style="font-size: 11px; color: #888;"></div>
-      <button id="changeApiKeyBtn" onclick="changeApiKey()" style="display: none; width: 100%; background: #ebebea; color: #444; margin-top: 8px;">Change API Key</button>
     </div>
 
     <p class="mode-help" style="margin-top:0;margin-bottom:16px">Review your UI text against content design best practices and accessibility guidelines. Get grades for style guide compliance and accessibility, plus specific recommendations for improvement.</p>
@@ -631,6 +627,10 @@ dropdown = drop-down</textarea>
 
     <div id="reportStatus"></div>
     <div id="reportResults"></div>
+  </div>
+
+  <div style="padding: 12px 16px; border-top: 1px solid #e8e8e8; text-align: center; background: #f9f9f8;">
+    <a href="#" onclick="changeApiKey(); return false;" style="color: #0066cc; text-decoration: none; font-size: 12px; cursor: pointer;">Change API key</a>
   </div>
 
   </div> <!-- end mainView -->
@@ -1107,27 +1107,22 @@ Output valid JSON only. No markdown fences, no commentary, nothing outside the J
     }
 
     function changeApiKey() {
-      document.getElementById('apiKeyForm').style.display = 'flex';
-      document.getElementById('apiKeyConfigured').style.display = 'none';
-      document.getElementById('changeApiKeyBtn').style.display = 'none';
+      const form = document.getElementById('apiKeyForm');
+      const section = document.getElementById('apiKeySection');
+      form.style.display = 'flex';
       document.getElementById('apiKeyInput').focus();
+      section.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
     function updateApiKeyUI(isConfigured) {
       const form = document.getElementById('apiKeyForm');
-      const configured = document.getElementById('apiKeyConfigured');
-      const changeBtn = document.getElementById('changeApiKeyBtn');
       const statusEl = document.getElementById('apiKeyStatus');
 
       if (isConfigured) {
         form.style.display = 'none';
-        configured.style.display = 'block';
-        changeBtn.style.display = 'block';
         statusEl.textContent = '';
       } else {
         form.style.display = 'flex';
-        configured.style.display = 'none';
-        changeBtn.style.display = 'none';
         statusEl.textContent = '';
       }
     }
