@@ -601,6 +601,8 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
     const texts = nodes.map(n => n.characters);
 
     try {
+      console.log('Starting report analysis with', texts.length, 'text nodes');
+
       const res = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
         headers: {
@@ -623,7 +625,7 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
 
       if (!res.ok) {
         const err = await res.json().catch(() => ({})) as { error?: { message?: string } };
-        const errorMsg = err.error?.message || `API error ${res.status}`;
+        const errorMsg = err.error?.message || `HTTP ${res.status}`;
         throw new Error(errorMsg);
       }
 
@@ -631,9 +633,13 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
       const responseText = data.content[0]?.text || '';
       figma.ui.postMessage({ type: 'report-result', raw: responseText });
     } catch (err) {
-      const errorMsg = (err as Error).message || 'Unknown error';
-      console.error('Report analysis failed:', errorMsg);
-      figma.ui.postMessage({ type: 'report-error', error: `API Error: ${errorMsg}` });
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      console.error('Report analysis failed:', errorMsg, err);
+      if (errorMsg.includes('Failed to fetch')) {
+        figma.ui.postMessage({ type: 'report-error', error: 'Network error: Could not reach the API. Check your internet connection.' });
+      } else {
+        figma.ui.postMessage({ type: 'report-error', error: `API Error: ${errorMsg}` });
+      }
     }
   } else if (msg.type === 'counter') {
     const nodes = getScopedNodes(msg.scope);
