@@ -464,9 +464,11 @@ figma.ui.onmessage = async (msg) => {
                 figma.ui.postMessage({ type: 'report-error', error: 'No API key configured. Please enter your Anthropic API key in the Review tab.' });
                 return;
             }
+            console.log('API key retrieved, length:', apiKey.length, 'starts with:', apiKey.substring(0, 10));
             const texts = nodes.map(n => n.characters);
             try {
                 console.log('Starting report analysis with', texts.length, 'text nodes');
+                console.log('Sending to http://localhost:3000/api/analyze-plugin');
                 const res = await fetch('http://localhost:3000/api/analyze-plugin', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -476,6 +478,7 @@ figma.ui.onmessage = async (msg) => {
                         apiKey
                     })
                 });
+                console.log('Response status:', res.status);
                 if (!res.ok) {
                     const err = await res.json().catch(() => ({}));
                     const errorMsg = ((_a = err.error) === null || _a === void 0 ? void 0 : _a.message) || `HTTP ${res.status}`;

@@ -598,10 +598,13 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
       return;
     }
 
+    console.log('API key retrieved, length:', apiKey.length, 'starts with:', apiKey.substring(0, 10));
+
     const texts = nodes.map(n => n.characters);
 
     try {
       console.log('Starting report analysis with', texts.length, 'text nodes');
+      console.log('Sending to http://localhost:3000/api/analyze-plugin');
 
       const res = await fetch('http://localhost:3000/api/analyze-plugin', {
         method: 'POST',
@@ -612,6 +615,8 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
           apiKey
         })
       });
+
+      console.log('Response status:', res.status);
 
       if (!res.ok) {
         const err = await res.json().catch(() => ({})) as { error?: { message?: string } };
