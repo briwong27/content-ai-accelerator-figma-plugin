@@ -85,7 +85,17 @@ interface SaveStyleguideMessage {
   customRules?: string;
 }
 
-type PluginMessage = ApplyMessage | UndoMessage | GetApiKeyMessage | SaveApiKeyMessage | GetTermRulesMessage | SaveTermRulesMessage | RunReportMessage | ResizeMessage | FindReplaceMessage | TerminologyMessage | CounterMessage | GetStyleguideMessage | SaveStyleguideMessage;
+interface LoadAccessibilityElementsMessage {
+  type: 'load-accessibility-elements';
+  scope: Scope;
+}
+
+interface SaveAccessibilityLabelsMessage {
+  type: 'save-accessibility-labels';
+  labels: Record<string, { label: string; hint: string; role: string; altText: string }>;
+}
+
+type PluginMessage = ApplyMessage | UndoMessage | GetApiKeyMessage | SaveApiKeyMessage | GetTermRulesMessage | SaveTermRulesMessage | RunReportMessage | ResizeMessage | FindReplaceMessage | TerminologyMessage | CounterMessage | GetStyleguideMessage | SaveStyleguideMessage | LoadAccessibilityElementsMessage | SaveAccessibilityLabelsMessage;
 
 // --- Style runs ---
 // A run is a contiguous segment of text where fontName and fontSize are uniform.
@@ -590,5 +600,42 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
       await figma.clientStorage.setAsync('custom-styleguide-rules', msg.customRules);
     }
     figma.ui.postMessage({ type: 'styleguide-saved' });
+  } else if (msg.type === 'load-accessibility-elements') {
+    const nodes = getScopedNodes(msg.scope);
+    const elements: Array<{ id: string; name: string; type: string; label: string; hint: string; role: string; altText: string }> = [];
+
+    for (const node of nodes) {
+      const pluginData = node.getPluginData('accessibility');
+      let data = { label: '', hint: '', role: '', altText: '' };
+      if (pluginData) {
+        try {
+          data = JSON.parse(pluginData);
+        } catch {
+          data = { label: '', hint: '', role: '', altText: '' };
+        }
+      }
+      elements.push({
+        id: node.id,
+        name: node.name,
+        type: 'text',
+        ...data
+      });
+    }
+
+    figma.ui.postMessage({ type: 'accessibility-elements', elements, count: elements.length });
+  } else if (msg.type === 'save-accessibility-labels') {
+    let saved = 0;
+    const nodes = getScopedNodes('selection');
+
+    for (const node of nodes) {
+      if (msg.labels[node.id]) {
+        const data = msg.labels[node.id];
+        node.setPluginData('accessibility', JSON.stringify(data));
+        saved++;
+      }
+    }
+
+    figma.notify(`Saved accessibility labels for ${saved} element(s).`);
+    figma.ui.postMessage({ type: 'accessibility-saved', saved });
   }
 };

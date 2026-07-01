@@ -150,6 +150,69 @@
 
     .checkbox-group input[type="checkbox"] { accent-color: #1a1a1a; }
 
+    .access-layer-item {
+      background: #fff;
+      border: 1px solid #e8e8e8;
+      border-radius: 6px;
+      padding: 10px;
+      margin-bottom: 10px;
+    }
+
+    .access-layer-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid #f0f0f0;
+      font-size: 12px;
+      font-weight: 500;
+      color: #1a1a1a;
+    }
+
+    .access-layer-icon {
+      width: 12px;
+      height: 12px;
+      background: #1a1a1a;
+      border-radius: 2px;
+      flex-shrink: 0;
+    }
+
+    .access-layer-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    .access-layer-badge {
+      background: #e8f5e9;
+      color: #2e7d5e;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-size: 10px;
+      font-weight: 500;
+    }
+
+    .access-field-group {
+      margin-bottom: 8px;
+    }
+
+    .access-field-label {
+      display: block;
+      font-size: 11px;
+      color: #666;
+      margin-bottom: 3px;
+      font-weight: 500;
+    }
+
+    .access-field-input {
+      width: 100%;
+      padding: 6px 8px;
+      border: 1px solid #d8d8d8;
+      border-radius: 4px;
+      font-size: 12px;
+      font-family: inherit;
+    }
+
+    .access-field-input:focus { outline: none; border-color: #888; background: #fff; }
+    .access-field-input.has-value { border-color: #2e7d5e; background: #f1f8f6; }
+
     .hidden { display: none !important; }
 
     /* --- Buttons --- */
@@ -344,6 +407,7 @@
     <button class="tab-btn" data-tab="replace" onclick="switchTab('replace')">Replace</button>
     <button class="tab-btn" data-tab="terms" onclick="switchTab('terms')">Terms</button>
     <button class="tab-btn" data-tab="counter" onclick="switchTab('counter')">Counter</button>
+    <button class="tab-btn" data-tab="accessibility" onclick="switchTab('accessibility')">Accessibility</button>
     <button class="tab-btn" data-tab="report" onclick="switchTab('report')">Review</button>
   </div>
 
@@ -486,6 +550,30 @@ dropdown = drop-down</textarea>
 
     <div id="counterStatus"></div>
     <div id="counterResults"></div>
+  </div>
+
+  <!-- ACCESSIBILITY TAB -->
+  <div id="tab-accessibility" class="tab-panel">
+    <p class="mode-help" style="margin-top:0;margin-bottom:16px">Add descriptive labels and hints to elements for screen readers and assistive technology. Labels are stored in Figma layer metadata and help ensure your designs are accessible to all users.</p>
+
+    <div class="section">
+      <label class="group-label">Scope</label>
+      <div class="radio-group">
+        <label><input type="radio" name="accessScope" value="selection" checked /> Selection</label>
+        <label><input type="radio" name="accessScope" value="page" /> Current Page</label>
+        <label><input type="radio" name="accessScope" value="all" /> All Pages</label>
+      </div>
+    </div>
+
+    <button id="loadElementsBtn" onclick="loadAccessibilityElements()">Load elements</button>
+
+    <div id="accessibilityStatus"></div>
+    <div id="accessibilityElements"></div>
+
+    <div class="button-row" id="accessibilityActions" style="display: none;">
+      <button id="saveAccessibilityBtn" onclick="saveAccessibilityLabels()">Save labels</button>
+      <button id="exportAccessibilityBtn" onclick="exportAccessibilityLabels()">Export CSV</button>
+    </div>
   </div>
 
   <!-- REPORT TAB -->
@@ -762,6 +850,102 @@ Output valid JSON only. No markdown fences, no commentary, nothing outside the J
       parent.postMessage({ pluginMessage: { type: 'counter', scope } }, '*');
     }
 
+    // --- Accessibility tab ---
+    function loadAccessibilityElements() {
+      const scope = document.querySelector('input[name="accessScope"]:checked').value;
+      document.getElementById('accessibilityStatus').textContent = 'Loading elements…';
+      document.getElementById('accessibilityElements').innerHTML = '';
+      document.getElementById('loadElementsBtn').disabled = true;
+      document.getElementById('accessibilityActions').style.display = 'none';
+      parent.postMessage({ pluginMessage: { type: 'load-accessibility-elements', scope } }, '*');
+    }
+
+    function renderAccessibilityElements(elements) {
+      const container = document.getElementById('accessibilityElements');
+      if (elements.length === 0) {
+        container.innerHTML = '<p style="color: #999; font-size: 12px; padding: 12px 0;">No text elements found in scope.</p>';
+        document.getElementById('accessibilityStatus').textContent = '';
+        return;
+      }
+
+      let html = `<label class="group-label" style="margin-top: 12px;">Elements (${elements.length})</label>`;
+      for (const el of elements) {
+        const hasLabel = el.label || el.hint;
+        const badge = hasLabel ? '<div class="access-layer-badge">✓ Labeled</div>' : '';
+        html += `
+          <div class="access-layer-item">
+            <div class="access-layer-header">
+              <div class="access-layer-icon"></div>
+              <div class="access-layer-name" title="${el.name}">${el.name}</div>
+              ${badge}
+            </div>
+            <div class="access-field-group">
+              <label class="access-field-label">Label</label>
+              <input type="text" class="access-field-input" data-id="${el.id}" data-field="label" value="${el.label || ''}" placeholder="Short accessible name" />
+            </div>
+            <div class="access-field-group">
+              <label class="access-field-label">Hint</label>
+              <input type="text" class="access-field-input" data-id="${el.id}" data-field="hint" value="${el.hint || ''}" placeholder="Additional guidance or context" />
+            </div>
+            <div class="access-field-group">
+              <label class="access-field-label">Role</label>
+              <input type="text" class="access-field-input" data-id="${el.id}" data-field="role" value="${el.role || ''}" placeholder="e.g., button, link, heading" />
+            </div>
+            <div class="access-field-group">
+              <label class="access-field-label">Alt text</label>
+              <input type="text" class="access-field-input" data-id="${el.id}" data-field="altText" value="${el.altText || ''}" placeholder="Description for images" />
+            </div>
+          </div>
+        `;
+      }
+      container.innerHTML = html;
+      document.getElementById('accessibilityStatus').textContent = '';
+      document.getElementById('loadElementsBtn').disabled = false;
+      document.getElementById('accessibilityActions').style.display = 'flex';
+
+      document.querySelectorAll('.access-field-input').forEach(input => {
+        if (input.value) input.classList.add('has-value');
+        input.addEventListener('input', () => input.classList.toggle('has-value', input.value.length > 0));
+      });
+    }
+
+    function saveAccessibilityLabels() {
+      const labels = {};
+      document.querySelectorAll('.access-field-input').forEach(input => {
+        const id = input.dataset.id;
+        const field = input.dataset.field;
+        if (!labels[id]) labels[id] = { label: '', hint: '', role: '', altText: '' };
+        labels[id][field] = input.value;
+      });
+
+      document.getElementById('saveAccessibilityBtn').disabled = true;
+      parent.postMessage({ pluginMessage: { type: 'save-accessibility-labels', labels } }, '*');
+    }
+
+    function exportAccessibilityLabels() {
+      const rows = [['Element', 'Label', 'Hint', 'Role', 'Alt Text']];
+      document.querySelectorAll('.access-layer-item').forEach(item => {
+        const header = item.querySelector('.access-layer-name').textContent;
+        const inputs = item.querySelectorAll('.access-field-input');
+        rows.push([
+          header,
+          inputs[0].value,
+          inputs[1].value,
+          inputs[2].value,
+          inputs[3].value
+        ]);
+      });
+
+      const csv = rows.map(row => row.map(cell => `"${cell.replace(/"/g, '""')}"`).join(',')).join('\n');
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'accessibility-labels.csv';
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
     // --- Report tab ---
     function handleStyleguideChange() {
       const selected = document.getElementById('styleguideSelect').value;
@@ -972,6 +1156,14 @@ Output valid JSON only. No markdown fences, no commentary, nothing outside the J
         } else {
           document.getElementById('customStyleguideSection').classList.add('hidden');
         }
+      } else if (msg.type === 'accessibility-elements') {
+        renderAccessibilityElements(msg.elements);
+      } else if (msg.type === 'accessibility-saved') {
+        document.getElementById('saveAccessibilityBtn').disabled = false;
+        document.getElementById('accessibilityStatus').textContent = `Saved labels for ${msg.saved} element(s).`;
+        setTimeout(() => {
+          document.getElementById('accessibilityStatus').textContent = '';
+        }, 3000);
       }
     };
 
