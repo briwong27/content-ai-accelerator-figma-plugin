@@ -1109,6 +1109,7 @@ Output valid JSON only. No markdown fences, no commentary, nothing outside the J
     function changeApiKey() {
       const form = document.getElementById('apiKeyForm');
       const section = document.getElementById('apiKeySection');
+      section.style.display = 'block';
       form.style.display = 'flex';
       document.getElementById('apiKeyInput').focus();
       section.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -1116,13 +1117,16 @@ Output valid JSON only. No markdown fences, no commentary, nothing outside the J
 
     function updateApiKeyUI(isConfigured) {
       const form = document.getElementById('apiKeyForm');
+      const section = document.getElementById('apiKeySection');
       const statusEl = document.getElementById('apiKeyStatus');
 
       if (isConfigured) {
         form.style.display = 'none';
+        section.style.display = 'none';
         statusEl.textContent = '';
       } else {
         form.style.display = 'flex';
+        section.style.display = 'block';
         statusEl.textContent = '';
       }
     }
