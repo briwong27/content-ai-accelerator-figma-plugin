@@ -221,9 +221,20 @@ function collectTextNodes(node) {
 function getScopedNodes(scope) {
     if (scope === 'selection')
         return figma.currentPage.selection.flatMap(collectTextNodes);
-    if (scope === 'page')
-        return collectTextNodes(figma.currentPage);
-    return figma.root.children.flatMap(collectTextNodes);
+    if (scope === 'page') {
+        const nodes = collectTextNodes(figma.currentPage);
+        console.log(`[Counter] Page scope: found ${nodes.length} text nodes on "${figma.currentPage.name}"`);
+        return nodes;
+    }
+    // 'all' scope - collect from all pages
+    const allPages = figma.root.children.filter(child => child.type === 'PAGE');
+    const allNodes = allPages.flatMap(page => {
+        const pageNodes = collectTextNodes(page);
+        console.log(`[Counter] All pages scope: page "${page.name}" has ${pageNodes.length} text nodes`);
+        return pageNodes;
+    });
+    console.log(`[Counter] All pages scope: total ${allNodes.length} text nodes across ${allPages.length} pages`);
+    return allNodes;
 }
 function saveSnapshot(nodes) {
     const snapshot = {};
