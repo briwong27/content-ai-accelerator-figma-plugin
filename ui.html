@@ -1144,15 +1144,30 @@ Output valid JSON only. No markdown fences, no commentary, nothing outside the J
       if (!msg) return;
 
       if (msg.type === 'report-result') {
+        console.log('Received report-result message');
         let raw = msg.raw.trim();
+        console.log('Raw message length:', raw.length);
         raw = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
         try {
           let parsed;
-          try { parsed = JSON.parse(raw); }
-          catch { const m = raw.match(/\{[\s\S]*\}/); parsed = JSON.parse(m[0]); }
+          try {
+            console.log('Attempting to parse JSON...');
+            parsed = JSON.parse(raw);
+            console.log('Successfully parsed JSON');
+          }
+          catch (e) {
+            console.log('First parse failed, trying regex match:', e);
+            const m = raw.match(/\{[\s\S]*\}/);
+            if (!m) throw new Error('No JSON object found in response');
+            console.log('Matched JSON, parsing...');
+            parsed = JSON.parse(m[0]);
+          }
+          console.log('Opening report view with parsed data');
           setReportStatus('');
           renderResults(parsed);
-        } catch {
+          console.log('Report displayed successfully');
+        } catch (e) {
+          console.error('Report display failed:', e);
           showError('report');
           setReportStatus('');
         }
