@@ -1,5 +1,170 @@
 /// <reference path="./node_modules/@figma/plugin-typings/index.d.ts" />
 
+// ============================================================================
+// SHARED TYPES AND HELPERS (inlined from shared-types.ts)
+// ============================================================================
+
+type SkipReason =
+  | 'locked'
+  | 'component-instance'
+  | 'not-text-node'
+  | 'empty-text'
+  | 'font-unavailable'
+  | 'write-failed'
+  | 'not-editable';
+
+interface LayerMetadata {
+  id: string;
+  name: string;
+  type: 'text' | 'frame' | 'group' | 'component' | 'instance' | 'other';
+  text?: string;
+  frameName?: string;
+  isLocked?: boolean;
+  isComponent?: boolean;
+  isInstance?: boolean;
+}
+
+interface SkippedLayer {
+  layer: LayerMetadata;
+  reason: SkipReason;
+  details?: string;
+}
+
+interface FeatureResult {
+  count?: number;
+  chars?: number;
+  words?: number;
+  success: boolean;
+  message?: string;
+  applied?: number;
+  unchanged?: number;
+  skipped: SkippedLayer[];
+  layers?: LayerMetadata[];
+  [key: string]: unknown;
+}
+
+interface MutationResult extends FeatureResult {
+  applied: number;
+  changedNodes?: number;
+}
+
+interface CountResult extends FeatureResult {
+  chars: number;
+  words: number;
+  layerCounts?: Array<{
+    layer: LayerMetadata;
+    chars: number;
+    words: number;
+  }>;
+}
+
+function getLayerName(node: BaseNode): string {
+  if ('name' in node) {
+    return node.name || 'Unnamed';
+  }
+  return 'Unknown';
+}
+
+function getFrameName(node: BaseNode): string | undefined {
+  let current: BaseNode | null = node;
+  while (current) {
+    if (current.type === 'FRAME') {
+      return getLayerName(current);
+    }
+    current = 'parent' in current ? current.parent : null;
+  }
+  return undefined;
+}
+
+function isEditableNode(node: BaseNode): boolean {
+  if ('locked' in node && node.locked) {
+    return false;
+  }
+  if (node.type === 'INSTANCE') {
+    return false;
+  }
+  if (node.type === 'TEXT') {
+    return true;
+  }
+  return false;
+}
+
+function createLayerMetadata(node: TextNode): LayerMetadata {
+  return {
+    id: node.id,
+    name: getLayerName(node),
+    type: 'text',
+    text: node.characters,
+    frameName: getFrameName(node),
+    isLocked: node.locked || false,
+    isComponent: node.parent?.type === 'COMPONENT',
+    isInstance: node.parent?.type === 'INSTANCE',
+  };
+}
+
+function getSkipReason(node: BaseNode): SkipReason | null {
+  if (node.type !== 'TEXT') {
+    return 'not-text-node';
+  }
+  const textNode = node as TextNode;
+  if (textNode.locked) {
+    return 'locked';
+  }
+  if (textNode.parent?.type === 'INSTANCE') {
+    return 'component-instance';
+  }
+  if (textNode.characters.length === 0) {
+    return 'empty-text';
+  }
+  return null;
+}
+
+function createSkippedLayer(node: TextNode, reason: SkipReason, details?: string): SkippedLayer {
+  return {
+    layer: createLayerMetadata(node),
+    reason,
+    details,
+  };
+}
+
+function summarizeSkipped(skipped: SkippedLayer[]): string {
+  if (skipped.length === 0) return '';
+  const byReason: Record<SkipReason, number> = {
+    'locked': 0,
+    'component-instance': 0,
+    'not-text-node': 0,
+    'empty-text': 0,
+    'font-unavailable': 0,
+    'write-failed': 0,
+    'not-editable': 0,
+  };
+  for (const skip of skipped) {
+    byReason[skip.reason]++;
+  }
+  const parts: string[] = [];
+  if (byReason.locked > 0) parts.push(`${byReason.locked} locked`);
+  if (byReason['component-instance'] > 0) parts.push(`${byReason['component-instance']} component instances`);
+  if (byReason['write-failed'] > 0) parts.push(`${byReason['write-failed']} with write errors`);
+  if (byReason['font-unavailable'] > 0) parts.push(`${byReason['font-unavailable']} with missing fonts`);
+  return parts.length > 0 ? `Skipped: ${parts.join(', ')}` : '';
+}
+
+function formatSuccessMessage(applied: number, total: number, skipped: SkippedLayer[]): string {
+  let msg = `Applied to ${applied} of ${total} text layer${total === 1 ? '' : 's'}`;
+  const skippedSummary = summarizeSkipped(skipped);
+  if (skippedSummary) {
+    msg += `. ${skippedSummary}`;
+  }
+  return msg;
+}
+
+function formatEmptyScopeMessage(scope: 'selection' | 'page' | 'all'): string {
+  if (scope === 'page') {
+    return 'Please select a frame first';
+  }
+  return 'No text layers found in scope';
+}
+
 figma.showUI(__html__, { width: 320, height: 520 });
 
 function sendPluginError(tab: string): void {
@@ -34,9 +199,11 @@ type TranslateLang = 'en' | 'es' | 'fr' | 'de' | 'ja' | 'ar' | 'zh' | 'zh-TW';
 
 interface ApplyMessage {
   type: 'apply';
-  scope: Scope;
-  mode: Mode;
-  lang: StressLang | TranslateLang;
+  scope?: Scope;
+  mode?: Mode;
+  lang?: StressLang | TranslateLang;
+  action?: 'preview' | 'apply' | 'apply-selected' | 'apply-all';
+  selectedIds?: string[];
 }
 
 interface UndoMessage {
@@ -75,12 +242,13 @@ interface ResizeMessage {
 
 interface FindReplaceMessage {
   type: 'find-replace';
-  action: 'count' | 'replace';
-  scope: Scope;
-  find: string;
-  replace: string;
-  matchCase: boolean;
-  wholeWord: boolean;
+  action: 'count' | 'preview' | 'replace' | 'apply-selected' | 'apply-all';
+  scope?: Scope;
+  find?: string;
+  replace?: string;
+  matchCase?: boolean;
+  wholeWord?: boolean;
+  selectedIds?: string[];
 }
 
 interface TermRule {
@@ -90,9 +258,10 @@ interface TermRule {
 
 interface TerminologyMessage {
   type: 'terminology';
-  action: 'scan' | 'fix';
-  scope: Scope;
-  rules: TermRule[];
+  action: 'scan' | 'preview' | 'fix' | 'apply-selected' | 'apply-all';
+  scope?: Scope;
+  rules?: TermRule[];
+  selectedIds?: string[];
 }
 
 interface CounterMessage {
@@ -301,6 +470,91 @@ function countMatches(nodes: TextNode[], find: string, replace: string, opts: Re
   return count;
 }
 
+// --- Terminology violations for preview ---
+
+interface Violation {
+  layerId: string;
+  layerName: string;
+  frameName?: string;
+  original: string;
+  term: string;
+  suggestion: string;
+  editable: boolean;
+  skipReason?: string;
+}
+
+function collectViolations(nodes: TextNode[], rules: TermRule[]): Violation[] {
+  const violations: Violation[] = [];
+  const opts: ReplaceOpts = { matchCase: false, wholeWord: true, preserveCase: true };
+
+  for (const node of nodes) {
+    const skipReason = getSkipReason(node);
+    const editable = !skipReason;
+
+    for (const rule of rules) {
+      if (!rule.find) continue;
+
+      const matchCount = applyReplace(node.characters, rule.find, rule.replace, opts).count;
+      if (matchCount > 0) {
+        const proposed = applyReplace(node.characters, rule.find, rule.replace, opts).result;
+
+        violations.push({
+          layerId: node.id,
+          layerName: getLayerName(node),
+          frameName: getFrameName(node),
+          original: node.characters,
+          term: rule.find,
+          suggestion: rule.replace,
+          editable: editable,
+          skipReason: skipReason || undefined,
+        });
+      }
+    }
+  }
+
+  return violations;
+}
+
+// --- Find & Replace matches for preview ---
+
+interface Match {
+  layerId: string;
+  layerName: string;
+  frameName?: string;
+  original: string;
+  proposed: string;
+  editable: boolean;
+  skipReason?: string;
+}
+
+function collectMatches(nodes: TextNode[], find: string, replace: string, opts: ReplaceOpts): Match[] {
+  const matches: Match[] = [];
+
+  for (const node of nodes) {
+    const skipReason = getSkipReason(node);
+    const editable = !skipReason;
+
+    // Check if there are matches in this node
+    const matchCount = applyReplace(node.characters, find, replace, opts).count;
+    if (matchCount > 0) {
+      // Generate the proposed text (what it would look like after replacement)
+      const proposed = applyReplace(node.characters, find, replace, opts).result;
+
+      matches.push({
+        layerId: node.id,
+        layerName: getLayerName(node),
+        frameName: getFrameName(node),
+        original: node.characters,
+        proposed: proposed,
+        editable: editable,
+        skipReason: skipReason || undefined,
+      });
+    }
+  }
+
+  return matches;
+}
+
 // Apply one or more replacement rules to every node, preserving per-run styling.
 // Returns total replacements made and how many layers changed.
 async function replaceInNodes(nodes: TextNode[], rules: TermRule[], opts: ReplaceOpts): Promise<{ count: number; changedNodes: number }> {
@@ -375,6 +629,112 @@ function getScopedNodes(scope: Scope): TextNode[] {
   return allText;
 }
 
+// --- Localization preview helpers ---
+
+interface LocalizationPreview {
+  layerId: string;
+  layerName: string;
+  frameName?: string;
+  original: string;
+  proposed: string;
+  mode: Mode;
+  lang: StressLang | TranslateLang;
+  expansionPercent: number;
+  warnings: string[];
+  editable: boolean;
+  skipReason?: SkipReason;
+}
+
+function isRTLLanguage(lang: StressLang | TranslateLang): boolean {
+  return lang === 'ar'; // Arabic is RTL
+}
+
+function calculateExpansion(original: string, proposed: string): number {
+  if (original.length === 0) return 0;
+  return Math.round(((proposed.length - original.length) / original.length) * 100);
+}
+
+function generateLocalizationWarnings(
+  original: string,
+  proposed: string,
+  mode: Mode,
+  lang: StressLang | TranslateLang
+): string[] {
+  const warnings: string[] = [];
+  const expansion = calculateExpansion(original, proposed);
+
+  // Check for expansion
+  if (expansion > 30) {
+    warnings.push(`Expands ${expansion}%`);
+  } else if (expansion < -20) {
+    warnings.push(`Contracts ${Math.abs(expansion)}%`);
+  }
+
+  // Check for RTL direction change
+  if (isRTLLanguage(lang)) {
+    warnings.push('RTL direction');
+  }
+
+  // Check for potential token alteration (if original has placeholders)
+  if (original.includes('{{') || original.includes('{') || original.includes('%')) {
+    warnings.push('Contains tokens');
+  }
+
+  // Check for potential truncation (if expansion is significant)
+  if (expansion > 50) {
+    warnings.push('⚠ Truncation risk');
+  }
+
+  return warnings;
+}
+
+async function collectLocalizations(
+  nodes: TextNode[],
+  mode: Mode,
+  lang: StressLang | TranslateLang
+): Promise<LocalizationPreview[]> {
+  const localizations: LocalizationPreview[] = [];
+
+  for (const node of nodes) {
+    try {
+      const originalRuns = getStyledRuns(node);
+      const originalText = node.characters;
+
+      // Generate proposed text
+      let proposedText = '';
+      if (mode === 'stress') {
+        proposedText = await stressText(originalText, lang as StressLang);
+      } else {
+        proposedText = await translateText(originalText, lang as TranslateLang);
+      }
+
+      const expansion = calculateExpansion(originalText, proposedText);
+      const warnings = generateLocalizationWarnings(originalText, proposedText, mode, lang);
+      const editable = isEditableNode(node);
+      const skipReasonRaw = getSkipReason(node);
+      const skipReason = editable ? undefined : (skipReasonRaw || undefined);
+
+      localizations.push({
+        layerId: node.id,
+        layerName: getLayerName(node),
+        frameName: getFrameName(node),
+        original: originalText,
+        proposed: proposedText,
+        mode: mode,
+        lang: lang,
+        expansionPercent: expansion,
+        warnings: warnings,
+        editable: editable,
+        skipReason: skipReason,
+      });
+    } catch (err) {
+      console.error(`Failed to generate localization for ${node.id}:`, err);
+    }
+  }
+
+  return localizations;
+}
+
 // --- Snapshot for undo ---
 
 interface NodeSnapshot {
@@ -440,6 +800,11 @@ function recordOriginals(nodes: TextNode[]): void {
 // --- Main handlers ---
 
 async function applyLocalization(msg: ApplyMessage): Promise<void> {
+  if (!msg.scope || !msg.mode || !msg.lang) {
+    figma.notify('Missing localization parameters.');
+    return;
+  }
+
   const nodes = getScopedNodes(msg.scope);
   if (nodes.length === 0) {
     figma.notify('No text layers found in scope.');
@@ -546,7 +911,91 @@ async function undoLocalization(): Promise<void> {
 figma.ui.onmessage = async (msg: PluginMessage) => {
   try {
   if (msg.type === 'apply') {
-    await applyLocalization(msg);
+    // Preview action: Show proposed localizations without applying
+    if (msg.action === 'preview') {
+      const nodes = getScopedNodes(msg.scope!);
+      if (nodes.length === 0) {
+        const message = formatEmptyScopeMessage(msg.scope!);
+        figma.ui.postMessage({ type: 'localization-preview-result', localizations: [], totalCount: 0, noScope: true, message });
+        return;
+      }
+
+      const localizations = await collectLocalizations(nodes, msg.mode!, msg.lang!);
+
+      figma.ui.postMessage({
+        type: 'localization-preview-result',
+        totalLocalizations: localizations.length,
+        localizations: localizations,
+      });
+      return;
+    }
+
+    // Apply-selected or apply-all: Apply selected localizations
+    if (msg.action === 'apply-selected' || msg.action === 'apply-all') {
+      if (!msg.scope || !msg.mode || !msg.lang) {
+        figma.notify('Missing localization parameters.');
+        return;
+      }
+
+      const nodes = getScopedNodes(msg.scope);
+      if (nodes.length === 0) {
+        figma.ui.postMessage({ type: 'localization-result', count: 0, noScope: true });
+        return;
+      }
+
+      // Filter nodes based on selectedIds (if apply-selected)
+      let nodesToChange = nodes;
+      if (msg.action === 'apply-selected' && msg.selectedIds && msg.selectedIds.length > 0) {
+        const selectedSet = new Set(msg.selectedIds);
+        nodesToChange = nodes.filter(n => selectedSet.has(n.id));
+      }
+
+      saveSnapshot(nodesToChange);
+
+      // Apply localization to filtered nodes
+      if (msg.mode === 'translate' && msg.lang === 'en') {
+        await restoreToEnglish(nodesToChange);
+      } else {
+        recordOriginals(nodesToChange);
+        let successCount = 0;
+        for (const node of nodesToChange) {
+          try {
+            const originalRuns = getStyledRuns(node);
+            const translatedRuns: StyleRun[] = [];
+
+            for (const run of originalRuns) {
+              let translatedText: string;
+              if (msg.mode === 'stress') {
+                translatedText = await stressText(run.text, msg.lang as StressLang);
+              } else {
+                translatedText = await translateText(run.text, msg.lang as TranslateLang);
+              }
+              translatedRuns.push({ ...run, text: translatedText });
+            }
+
+            await applyStyledRuns(node, translatedRuns);
+            successCount++;
+          } catch (err) {
+            console.error(`Skipped node ${node.id}:`, err);
+          }
+        }
+
+        if (successCount > 0) {
+          figma.notify(`Applied localization to ${successCount} of ${nodesToChange.length} text layers.`);
+          figma.ui.postMessage({ type: 'localization-result', count: successCount });
+        } else {
+          sendPluginError('localize');
+        }
+      }
+      return;
+    }
+
+    // Default: apply immediately (backward compatible)
+    if (!msg.scope || !msg.mode || !msg.lang) {
+      figma.notify('Missing localization parameters.');
+      return;
+    }
+    await applyLocalization(msg as Required<ApplyMessage>);
   } else if (msg.type === 'undo') {
     await undoLocalization();
   } else if (msg.type === 'get-api-key') {
@@ -563,27 +1012,120 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
   } else if (msg.type === 'resize') {
     figma.ui.resize(msg.width, msg.height);
   } else if (msg.type === 'find-replace') {
-    const nodes = getScopedNodes(msg.scope);
-    if (nodes.length === 0) {
-      figma.ui.postMessage({ type: 'fr-result', mode: msg.action, count: 0, noScope: true });
+    // Preview action: Show matches without applying
+    if (msg.action === 'preview') {
+      const nodes = getScopedNodes(msg.scope!);
+      if (nodes.length === 0) {
+        const message = formatEmptyScopeMessage(msg.scope!);
+        figma.ui.postMessage({ type: 'fr-preview-result', matches: [], totalMatches: 0, noScope: true, message });
+        return;
+      }
+
+      const opts: ReplaceOpts = { matchCase: msg.matchCase!, wholeWord: msg.wholeWord!, preserveCase: !msg.matchCase };
+      const matches = collectMatches(nodes, msg.find!, msg.replace!, opts);
+
+      figma.ui.postMessage({
+        type: 'fr-preview-result',
+        totalMatches: matches.length,
+        matches: matches,
+      });
       return;
     }
-    const opts: ReplaceOpts = { matchCase: msg.matchCase, wholeWord: msg.wholeWord, preserveCase: !msg.matchCase };
+
+    // Apply-selected or apply-all: Apply selected matches
+    if (msg.action === 'apply-selected' || msg.action === 'apply-all') {
+      // Get all nodes that were in the preview
+      const nodes = getScopedNodes(msg.scope!);
+      if (nodes.length === 0) {
+        figma.ui.postMessage({ type: 'fr-result', mode: 'replace', count: 0, noScope: true });
+        return;
+      }
+
+      const opts: ReplaceOpts = { matchCase: msg.matchCase!, wholeWord: msg.wholeWord!, preserveCase: !msg.matchCase };
+
+      // Filter nodes based on selectedIds (if apply-selected)
+      let nodesToChange = nodes;
+      if (msg.action === 'apply-selected' && msg.selectedIds && msg.selectedIds.length > 0) {
+        const selectedSet = new Set(msg.selectedIds);
+        nodesToChange = nodes.filter(n => selectedSet.has(n.id));
+      }
+
+      saveSnapshot(nodesToChange);
+      const { count, changedNodes } = await replaceInNodes(nodesToChange, [{ find: msg.find!, replace: msg.replace! }], opts);
+      const successMessage = `Replaced ${count} occurrence(s) in ${changedNodes} layer(s).`;
+      figma.notify(successMessage);
+      figma.ui.postMessage({ type: 'fr-result', mode: 'replace', count, nodes: changedNodes });
+      return;
+    }
+
+    // Original count and replace actions
+    const nodes = getScopedNodes(msg.scope!);
+    if (nodes.length === 0) {
+      const message = formatEmptyScopeMessage(msg.scope!);
+      figma.ui.postMessage({ type: 'fr-result', mode: msg.action, count: 0, noScope: true, message });
+      return;
+    }
+    const opts: ReplaceOpts = { matchCase: msg.matchCase!, wholeWord: msg.wholeWord!, preserveCase: !msg.matchCase };
 
     if (msg.action === 'count') {
-      const count = countMatches(nodes, msg.find, msg.replace, opts);
+      const count = countMatches(nodes, msg.find!, msg.replace!, opts);
       figma.ui.postMessage({ type: 'fr-result', mode: 'count', count });
       return;
     }
 
     saveSnapshot(nodes);
-    const { count, changedNodes } = await replaceInNodes(nodes, [{ find: msg.find, replace: msg.replace }], opts);
-    figma.notify(`Replaced ${count} occurrence(s) in ${changedNodes} layer(s).`);
+    const { count, changedNodes } = await replaceInNodes(nodes, [{ find: msg.find!, replace: msg.replace! }], opts);
+    const successMessage = `Replaced ${count} occurrence(s) in ${changedNodes} layer(s).`;
+    figma.notify(successMessage);
     figma.ui.postMessage({ type: 'fr-result', mode: 'replace', count, nodes: changedNodes });
   } else if (msg.type === 'terminology') {
-    const nodes = getScopedNodes(msg.scope);
+    // Preview action: Show violations without applying
+    if (msg.action === 'preview') {
+      const nodes = getScopedNodes(msg.scope!);
+      if (nodes.length === 0) {
+        const message = formatEmptyScopeMessage(msg.scope!);
+        figma.ui.postMessage({ type: 'term-preview-result', violations: [], totalViolations: 0, noScope: true, message });
+        return;
+      }
+
+      const violations = collectViolations(nodes, msg.rules!);
+
+      figma.ui.postMessage({
+        type: 'term-preview-result',
+        totalViolations: violations.length,
+        violations: violations,
+      });
+      return;
+    }
+
+    // Apply-selected or apply-all: Apply selected violations
+    if (msg.action === 'apply-selected' || msg.action === 'apply-all') {
+      const nodes = getScopedNodes(msg.scope!);
+      if (nodes.length === 0) {
+        figma.ui.postMessage({ type: 'term-result', mode: 'fix', violations: [], count: 0, noScope: true });
+        return;
+      }
+
+      // Filter nodes based on selectedIds (if apply-selected)
+      let nodesToChange = nodes;
+      if (msg.action === 'apply-selected' && msg.selectedIds && msg.selectedIds.length > 0) {
+        const selectedSet = new Set(msg.selectedIds);
+        nodesToChange = nodes.filter(n => selectedSet.has(n.id));
+      }
+
+      saveSnapshot(nodesToChange);
+      const { count, changedNodes } = await replaceInNodes(nodesToChange, msg.rules!, { matchCase: false, wholeWord: true, preserveCase: true });
+      const successMessage = `Fixed ${count} term(s) in ${changedNodes} layer(s).`;
+      figma.notify(successMessage);
+      figma.ui.postMessage({ type: 'term-result', mode: 'fix', violations: [], count, nodes: changedNodes });
+      return;
+    }
+
+    // Original scan and fix actions
+    const nodes = getScopedNodes(msg.scope!);
     if (nodes.length === 0) {
-      figma.ui.postMessage({ type: 'term-result', mode: msg.action, violations: [], count: 0, noScope: true });
+      const message = formatEmptyScopeMessage(msg.scope!);
+      figma.ui.postMessage({ type: 'term-result', mode: msg.action, violations: [], count: 0, noScope: true, message });
       return;
     }
     const opts: ReplaceOpts = { matchCase: false, wholeWord: true, preserveCase: true };
@@ -591,11 +1133,11 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
     if (msg.action === 'scan') {
       const violations: Array<{ string: string; layer: string; term: string; suggestion: string; count: number }> = [];
       for (const node of nodes) {
-        for (const rule of msg.rules) {
+        for (const rule of msg.rules!) {
           if (!rule.find) continue;
           const c = applyReplace(node.characters, rule.find, rule.replace, opts).count;
           if (c > 0) {
-            violations.push({ string: node.characters, layer: node.name, term: rule.find, suggestion: rule.replace, count: c });
+            violations.push({ string: node.characters, layer: getLayerName(node), term: rule.find, suggestion: rule.replace, count: c });
           }
         }
       }
@@ -605,8 +1147,9 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
     }
 
     saveSnapshot(nodes);
-    const { count, changedNodes } = await replaceInNodes(nodes, msg.rules, opts);
-    figma.notify(`Fixed ${count} term(s) in ${changedNodes} layer(s).`);
+    const { count, changedNodes } = await replaceInNodes(nodes, msg.rules!, opts);
+    const successMessage = `Fixed ${count} term(s) in ${changedNodes} layer(s).`;
+    figma.notify(successMessage);
     figma.ui.postMessage({ type: 'term-result', mode: 'fix', violations: [], count, nodes: changedNodes });
   } else if (msg.type === 'run-report') {
     const scope: Scope = (msg.scope === 'page' || msg.scope === 'all') ? msg.scope : 'selection';
@@ -689,24 +1232,41 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
   } else if (msg.type === 'counter') {
     const nodes = getScopedNodes(msg.scope);
     if (nodes.length === 0) {
-      let errorMessage = 'No text in scope';
-      if (msg.scope === 'page') {
-        errorMessage = 'Please select a frame first';
-      }
-      figma.ui.postMessage({ type: 'counter-result', chars: 0, words: 0, noScope: true, message: errorMessage });
+      const message = formatEmptyScopeMessage(msg.scope);
+      figma.ui.postMessage({ type: 'counter-result', chars: 0, words: 0, noScope: true, message });
       return;
     }
 
     let totalChars = 0;
     let totalWords = 0;
+    const layerCounts: Array<{ layer: LayerMetadata; chars: number; words: number }> = [];
 
     for (const node of nodes) {
       const text = node.characters;
-      totalChars += text.length;
-      totalWords += text.split(/\s+/).filter(word => word.length > 0).length;
+      const chars = text.length;
+      const words = text.split(/\s+/).filter(word => word.length > 0).length;
+
+      totalChars += chars;
+      totalWords += words;
+
+      // Collect per-layer counts for future UI improvements
+      layerCounts.push({
+        layer: createLayerMetadata(node),
+        chars,
+        words,
+      });
     }
 
-    figma.ui.postMessage({ type: 'counter-result', chars: totalChars, words: totalWords });
+    // Send result with enhanced metadata while maintaining backward compatibility
+    figma.ui.postMessage({
+      type: 'counter-result',
+      chars: totalChars,
+      words: totalWords,
+      count: totalChars, // Also include generic count
+      success: true,
+      skipped: [],
+      layerCounts, // New field for future UI improvements
+    });
   } else if (msg.type === 'get-styleguide') {
     const styleguide = await figma.clientStorage.getAsync('styleguide') as string | undefined;
     const customRules = await figma.clientStorage.getAsync('custom-styleguide-rules') as string | undefined;
