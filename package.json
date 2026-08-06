@@ -7,6 +7,9 @@
     "dev": "node server.js",
     "deploy": "vercel --prod"
   },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.38.0"
+  },
   "devDependencies": {
     "@figma/plugin-typings": "^1.90.0",
     "typescript": "^5.3.0"

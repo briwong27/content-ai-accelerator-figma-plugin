@@ -4,6 +4,16 @@
 // Local development: http://localhost:3000/api/analyze-plugin
 // Vercel deployment: https://[your-project-name].vercel.app/api/analyze-plugin
 const API_ENDPOINT = 'https://content-ai-accelerator-figma-plugin.vercel.app/api/analyze-plugin';
+// Generate a unique user ID for usage tracking
+async function getUserId() {
+    let userId = await figma.clientStorage.getAsync('plugin-user-id');
+    if (!userId) {
+        userId = 'user-' + Math.random().toString(36).substr(2, 9) + '-' + Date.now();
+        await figma.clientStorage.setAsync('plugin-user-id', userId);
+        console.log('Generated new user ID:', userId);
+    }
+    return userId;
+}
 function getLayerName(node) {
     if ('name' in node) {
         return node.name || 'Unnamed';
@@ -882,6 +892,7 @@ figma.ui.onmessage = async (msg) => {
             }
             console.log('API key retrieved, length:', apiKey.length, 'starts with:', apiKey.substring(0, 10));
             const texts = nodes.map(n => n.characters);
+            const userId = await getUserId();
             try {
                 console.log('Starting report analysis with', texts.length, 'text nodes');
                 console.log('Sending to', API_ENDPOINT);
@@ -891,23 +902,30 @@ figma.ui.onmessage = async (msg) => {
                     body: JSON.stringify({
                         texts,
                         systemPrompt: msg.systemPrompt,
-                        apiKey
+                        apiKey,
+                        userId
                     })
                 });
                 console.log('Response status:', res.status);
+                const data = await res.json();
                 if (!res.ok) {
-                    const err = await res.json().catch(() => ({}));
-                    const errorMsg = ((_a = err.error) === null || _a === void 0 ? void 0 : _a.message) || `HTTP ${res.status}`;
+                    // Handle usage limit error specially
+                    if (res.status === 429) {
+                        const usageError = data.message || 'Free tier limit reached. Provide your API key for unlimited analyses.';
+                        figma.ui.postMessage({ type: 'report-error', error: usageError, usage: data.usage });
+                        return;
+                    }
+                    const err = data;
+                    const errorMsg = err.message || ((_a = err.error) === null || _a === void 0 ? void 0 : _a.message) || `HTTP ${res.status}`;
                     throw new Error(errorMsg);
                 }
-                const data = await res.json();
                 console.log('Response JSON parsed:', JSON.stringify(data).substring(0, 100));
                 const report = data.report;
                 if (!report) {
                     console.error('No report in response:', JSON.stringify(data));
                     throw new Error(data.error || 'Empty response from server');
                 }
-                figma.ui.postMessage({ type: 'report-result', raw: report });
+                figma.ui.postMessage({ type: 'report-result', raw: report, usage: data.usage });
             }
             catch (err) {
                 let errorMsg = 'Unknown error';

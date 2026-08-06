@@ -5,6 +5,17 @@
 // Vercel deployment: https://[your-project-name].vercel.app/api/analyze-plugin
 const API_ENDPOINT = 'https://content-ai-accelerator-figma-plugin.vercel.app/api/analyze-plugin';
 
+// Generate a unique user ID for usage tracking
+async function getUserId(): Promise<string> {
+  let userId = await figma.clientStorage.getAsync('plugin-user-id') as string | undefined;
+  if (!userId) {
+    userId = 'user-' + Math.random().toString(36).substr(2, 9) + '-' + Date.now();
+    await figma.clientStorage.setAsync('plugin-user-id', userId);
+    console.log('Generated new user ID:', userId);
+  }
+  return userId;
+}
+
 // ============================================================================
 // SHARED TYPES AND HELPERS (inlined from shared-types.ts)
 // ============================================================================
@@ -1176,6 +1187,7 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
     console.log('API key retrieved, length:', apiKey.length, 'starts with:', apiKey.substring(0, 10));
 
     const texts = nodes.map(n => n.characters);
+    const userId = await getUserId();
 
     try {
       console.log('Starting report analysis with', texts.length, 'text nodes');
@@ -1187,19 +1199,27 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
         body: JSON.stringify({
           texts,
           systemPrompt: msg.systemPrompt,
-          apiKey
+          apiKey,
+          userId
         })
       });
 
       console.log('Response status:', res.status);
 
+      const data = await res.json();
+
       if (!res.ok) {
-        const err = await res.json().catch(() => ({})) as { error?: { message?: string } };
-        const errorMsg = err.error?.message || `HTTP ${res.status}`;
+        // Handle usage limit error specially
+        if (res.status === 429) {
+          const usageError = (data as any).message || 'Free tier limit reached. Provide your API key for unlimited analyses.';
+          figma.ui.postMessage({ type: 'report-error', error: usageError, usage: (data as any).usage });
+          return;
+        }
+        const err = (data as any);
+        const errorMsg = err.message || err.error?.message || `HTTP ${res.status}`;
         throw new Error(errorMsg);
       }
 
-      const data = await res.json();
       console.log('Response JSON parsed:', JSON.stringify(data).substring(0, 100));
 
       const report = (data as any).report;
@@ -1207,7 +1227,7 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
         console.error('No report in response:', JSON.stringify(data));
         throw new Error((data as any).error || 'Empty response from server');
       }
-      figma.ui.postMessage({ type: 'report-result', raw: report });
+      figma.ui.postMessage({ type: 'report-result', raw: report, usage: (data as any).usage });
     } catch (err) {
       let errorMsg = 'Unknown error';
       let errorDetails = '';

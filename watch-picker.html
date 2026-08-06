@@ -1,0 +1,829 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>What Should I Watch?</title>
+<style>
+  :root {
+    --bg: #0a0a0a;
+    --card: #1a1a1a;
+    --card-2: #2a2a2a;
+    --text: #f0f0f0;
+    --muted: #999999;
+    --accent: #ffffff;
+    --accent-2: #e0e0e0;
+    --border: #3a3a3a;
+    --gold: #ffffff;
+    --radius: 0px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: "Courier New", "Courier", monospace;
+    background: linear-gradient(135deg, #000000 0%, #0a0a0a 50%, #1a1a1a 100%);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 48px 20px;
+    position: relative;
+  }
+  body::before {
+    content: "";
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    background-image:
+      repeating-linear-gradient(0deg, rgba(0,0,0,.4) 0px, rgba(0,0,0,.4) 2px, transparent 2px, transparent 4px),
+      repeating-linear-gradient(90deg, rgba(255,255,255,.015) 0px, rgba(255,255,255,.015) 1px, transparent 1px, transparent 2px),
+      repeating-linear-gradient(90deg, rgba(0,0,0,.1) 0px, rgba(0,0,0,.1) 40px, transparent 40px, transparent 50px);
+    pointer-events: none;
+    z-index: 1;
+  }
+  .app { width: 100%; max-width: 560px; position: relative; z-index: 2; }
+  header {
+    text-align: center; margin-bottom: 32px;
+    border-top: 3px solid var(--accent);
+    border-bottom: 3px solid var(--accent);
+    padding: 28px 0;
+    text-shadow:
+      0 2px 10px rgba(0,0,0,0.8),
+      0 0 20px rgba(0,0,0,0.5);
+  }
+  h1 {
+    font-size: 52px;
+    letter-spacing: 5px;
+    font-weight: 900;
+    text-transform: uppercase;
+    color: var(--accent);
+    font-family: Georgia, "Times New Roman", serif;
+    text-shadow:
+      2px 2px 4px rgba(0,0,0,1),
+      4px 4px 8px rgba(0,0,0,0.8);
+    font-style: italic;
+  }
+  h1 .emoji { font-size: 36px; margin: 0 8px; display: block; }
+  .subtitle {
+    color: var(--muted);
+    margin-top: 12px;
+    font-size: 13px;
+    letter-spacing: 2px;
+    font-family: "Courier New", monospace;
+    font-weight: 700;
+  }
+
+  .tabs {
+    display: flex; gap: 1px; background: var(--border);
+    margin-bottom: 32px;
+    border: 2px solid var(--accent);
+  }
+  .tab {
+    flex: 1; padding: 14px; border: none;
+    background: var(--card); color: var(--muted); font-size: 13px;
+    font-weight: 700; cursor: pointer; transition: 0.2s;
+    letter-spacing: 1.5px;
+    font-family: "Courier New", monospace;
+    text-transform: uppercase;
+  }
+  .tab:hover { background: var(--card-2); color: var(--accent); }
+  .tab.active { background: var(--accent); color: #000000; font-weight: 900; }
+
+  .panel { display: none; }
+  .panel.active { display: block; animation: fade 0.3s ease; }
+  @keyframes fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+  .card {
+    background: var(--card);
+    border: 2px solid var(--accent);
+    padding: 28px;
+    position: relative;
+    box-shadow:
+      0 0 40px rgba(0,0,0,0.8),
+      0 20px 60px rgba(0,0,0,0.9),
+      inset 0 0 30px rgba(255,255,255,0.03),
+      inset 0 1px 0 rgba(255,255,255,0.1);
+  }
+  .card::before {
+    content: "";
+    position: absolute;
+    top: 12px; left: 12px; right: 12px; bottom: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    pointer-events: none;
+  }
+  .card > * { position: relative; z-index: 1; }
+
+  .q-label {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 3px;
+    color: var(--accent);
+    margin-bottom: 12px;
+    font-weight: 900;
+    font-family: Georgia, "Times New Roman", serif;
+    font-style: italic;
+  }
+  .q-text {
+    font-size: 26px;
+    font-weight: 900;
+    margin-bottom: 24px;
+    color: var(--text);
+    line-height: 1.3;
+    font-family: Georgia, "Times New Roman", serif;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+  }
+  .options { display: grid; gap: 12px; }
+  .option {
+    text-align: left; padding: 14px 18px; border: 1px solid var(--border);
+    background: rgba(255, 255, 255, 0.02);
+    color: var(--text); font-size: 15px; cursor: pointer; transition: 0.2s;
+    font-family: "Courier New", monospace;
+  }
+  .option:hover {
+    border-color: var(--accent);
+    background: rgba(255, 255, 255, 0.08);
+    transform: translateX(3px);
+  }
+
+  .progress {
+    height: 3px;
+    background: var(--border);
+    border: 1px solid var(--border);
+    margin: 24px 0 8px;
+    overflow: hidden;
+  }
+  .progress-bar {
+    height: 100%;
+    width: 0;
+    background: var(--accent);
+    transition: 0.3s;
+  }
+
+  textarea {
+    width: 100%; min-height: 150px; resize: vertical; padding: 14px;
+    border: 1px solid var(--border);
+    background: rgba(255, 255, 255, 0.02);
+    color: var(--text); font-size: 15px; font-family: "Courier New", monospace; line-height: 1.8;
+  }
+  textarea:focus { outline: none; border-color: var(--accent); background: rgba(255, 255, 255, 0.06); }
+  .hint {
+    font-size: 13px; color: var(--muted); margin: 12px 0 18px;
+    font-family: "Courier New", monospace;
+  }
+
+  .btn {
+    width: 100%; padding: 16px; border: 2px solid var(--accent);
+    background: var(--accent);
+    color: #000000; font-size: 13px; font-weight: 900; cursor: pointer; transition: 0.15s;
+    font-family: "Arial Black", sans-serif;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    box-shadow:
+      0 4px 12px rgba(0,0,0,0.7),
+      inset 0 1px 0 rgba(255,255,255,0.2);
+    text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+  }
+  .btn:hover {
+    background: var(--accent-2);
+    border-color: var(--accent-2);
+    box-shadow:
+      0 6px 16px rgba(0,0,0,0.8),
+      inset 0 1px 0 rgba(255,255,255,0.3);
+  }
+  .btn.secondary {
+    background: transparent;
+    color: var(--accent);
+    border: 2px solid var(--accent);
+    margin-top: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.6);
+  }
+  .btn.secondary:hover {
+    background: rgba(255, 255, 255, 0.08);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.8);
+  }
+
+  .result {
+    text-align: center; padding: 12px 0;
+  }
+  .result .badge {
+    font-size: 11px; color: var(--accent); letter-spacing: 2px;
+    text-transform: uppercase;
+    font-weight: 900;
+    font-family: "Arial Black", sans-serif;
+  }
+  .result .pick {
+    font-size: 38px; font-weight: 900; margin: 16px 0;
+    line-height: 1.2;
+    color: var(--accent);
+    letter-spacing: 1px;
+    font-family: "Courier New", monospace;
+  }
+  .result .meta { color: var(--muted); font-size: 13px; margin-bottom: 12px; font-family: "Courier New", monospace; }
+  .result .blurb {
+    color: var(--text); font-size: 14px; line-height: 1.7; max-width: 90%;
+    margin: 0 auto 12px;
+    font-family: "Courier New", monospace;
+  }
+  .spin { display: inline-block; animation: spin 0.6s ease; }
+  @keyframes spin { from { transform: rotate(-25deg) scale(0.8); } to { transform: rotate(0) scale(1); } }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1><span class="emoji">🍿</span> What Should I Watch?</h1>
+    <p class="subtitle">Take the quiz, or drop in a few titles and let fate decide.</p>
+  </header>
+
+  <div class="tabs">
+    <button class="tab active" data-tab="quiz">🎬 Quiz me</button>
+    <button class="tab" data-tab="list">🎲 My own list</button>
+  </div>
+
+  <!-- QUIZ -->
+  <section class="panel active" id="quiz">
+    <div class="card" id="quizCard"></div>
+  </section>
+
+  <!-- LIST -->
+  <section class="panel" id="list">
+    <div class="card">
+      <div class="q-text">Enter a few movies</div>
+      <textarea id="movieInput" placeholder="The Matrix&#10;Spirited Away&#10;Parasite&#10;Knives Out"></textarea>
+      <p class="hint">One per line (or comma-separated). Add 2 or more, then spin.</p>
+      <button class="btn" id="spinBtn">🎲 Pick one at random</button>
+      <div id="listResult"></div>
+    </div>
+  </section>
+</div>
+
+<script>
+/* ---------- Tab switching ---------- */
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById(tab.dataset.tab).classList.add('active');
+  });
+});
+
+/* ---------- Quiz data ---------- */
+const QUESTIONS = [
+  { label: "Last Watch", text: "What did you last watch?", type: "text", skip: true },
+  { label: "Similar?", text: "Do you want something similar?", type: "similar", conditional: true },
+  { label: "Mood", text: "What kind of night is it?",
+    options: [
+      { t: "Light & fun", tags: ["comedy", "feelgood"] },
+      { t: "Edge of my seat", tags: ["thriller", "action"] },
+      { t: "Make me feel something", tags: ["drama", "romance"] },
+      { t: "Whoa, mind-bending", tags: ["scifi", "mystery"] },
+    ]},
+  { label: "Energy", text: "How much focus do you have?",
+    options: [
+      { t: "Full attention", tags: ["mystery", "scifi", "drama"] },
+      { t: "Some — but keep it moving", tags: ["action", "thriller"] },
+      { t: "Background-ish, easy watch", tags: ["comedy", "feelgood"] },
+    ]},
+  { label: "Era", text: "New or a classic?",
+    options: [
+      { t: "Something recent", tags: ["modern"] },
+      { t: "A proven classic", tags: ["classic"] },
+      { t: "Don't care, surprise me", tags: [] },
+    ]},
+  { label: "Company", text: "Who's watching?",
+    options: [
+      { t: "Just me", tags: ["drama", "mystery", "scifi"] },
+      { t: "Date night", tags: ["romance", "feelgood"] },
+      { t: "Friends / group", tags: ["comedy", "action"] },
+      { t: "Family", tags: ["feelgood", "comedy"] },
+    ]},
+];
+
+const MOVIES = [
+  // 1920s-1930s
+  { title: "Metropolis", year: 1927, tags: ["scifi", "drama", "classic"], blurb: "A visionary dystopia from Weimar Germany—expressionist and sprawling." },
+  { title: "The General", year: 1926, tags: ["comedy", "feelgood", "classic"], blurb: "Buster Keaton's masterpiece—physical comedy and engineering brilliance." },
+  { title: "Nosferatu", year: 1922, tags: ["thriller", "drama", "classic"], blurb: "German expressionist vampire—shadowy, haunting, and hypnotic." },
+  { title: "M", year: 1931, tags: ["thriller", "mystery", "classic"], blurb: "Fritz Lang's hunt for a child killer—Weimar at its darkest." },
+  { title: "Battleship Potemkin", year: 1925, tags: ["drama", "action", "classic"], blurb: "Eisenstein's Soviet masterpiece—revolutionary filmmaking and montage." },
+
+  // 1940s
+  { title: "Citizen Kane", year: 1941, tags: ["drama", "mystery", "classic"], blurb: "Welles' revolutionary portrait of ambition and corruption." },
+  { title: "The Maltese Falcon", year: 1941, tags: ["mystery", "thriller", "classic"], blurb: "Bogart's quintessential noir detective—all dangerous intrigue." },
+  { title: "Casablanca", year: 1942, tags: ["romance", "drama", "classic"], blurb: "The timeless romance against a wartime backdrop—fate and sacrifice." },
+  { title: "Double Indemnity", year: 1944, tags: ["thriller", "drama", "mystery"], blurb: "The ur-text of film noir—murder, lust, and beautiful darkness." },
+  { title: "The Third Man", year: 1949, tags: ["thriller", "mystery", "drama"], blurb: "British-Austrian postwar Vienna intrigue with one of cinema's twists." },
+  { title: "Bicycle Thieves", year: 1948, tags: ["drama", "feelgood"], blurb: "Italian neorealism—a father and son's heartbreaking search in Rome." },
+
+  // 1950s
+  { title: "Singin' in the Rain", year: 1952, tags: ["comedy", "feelgood", "classic"], blurb: "Pure joy: dancing, songs, and charisma in every frame." },
+  { title: "Sunset Boulevard", year: 1950, tags: ["drama", "thriller", "mystery"], blurb: "Hollywood's dark heart—faded stars and bitter obsession." },
+  { title: "Rear Window", year: 1954, tags: ["thriller", "mystery", "drama"], blurb: "Hitchcock's voyeuristic masterpiece—suspense from a single window." },
+  { title: "Vertigo", year: 1958, tags: ["thriller", "mystery", "drama"], blurb: "Dizzying obsession and impossible love in Hitchcock's masterwork." },
+  { title: "Tokyo Story", year: 1953, tags: ["drama", "feelgood", "classic"], blurb: "Ozu's poetic meditation on family, aging, and the changing world." },
+  { title: "Seven Samurai", year: 1954, tags: ["action", "drama", "classic"], blurb: "Kurosawa's epic—seven warriors defend a village with honor and humor." },
+  { title: "Ikiru", year: 1952, tags: ["drama", "mystery"], blurb: "A dying man finds meaning in a lifetime of bureaucracy and regret." },
+  { title: "Yojimbo", year: 1961, tags: ["action", "drama", "comedy", "classic"], blurb: "Kurosawa's cynical ronin plays two gangs against each other—witty and violent." },
+  { title: "The Hidden Fortress", year: 1958, tags: ["action", "adventure", "classic"], blurb: "Kurosawa's epic—two commoners help a general escape with a princess." },
+  { title: "High and Low", year: 1963, tags: ["thriller", "mystery", "drama"], blurb: "Kurosawa's crime thriller—a ransom case exposes class tensions in Tokyo." },
+  { title: "The Bad Sleep Well", year: 1960, tags: ["thriller", "drama", "classic"], blurb: "Kurosawa's corporate noir—revenge and corruption in postwar Japan." },
+  { title: "Dersu Uzala", year: 1975, tags: ["adventure", "drama", "classic"], blurb: "Kurosawa's Russian epic—a soldier befriends a Siberian hunter." },
+  { title: "Dreams", year: 1990, tags: ["fantasy", "drama"], blurb: "Kurosawa's poetic anthology—eight vignettes of surreal vision and philosophy." },
+
+  // 1960s-1970s
+  { title: "Psycho", year: 1960, tags: ["thriller", "mystery", "drama"], blurb: "A shower scene that changed cinema forever—shocking and brilliant." },
+  { title: "The Manchurian Candidate", year: 1962, tags: ["thriller", "mystery", "drama"], blurb: "Cold War paranoia and political intrigue—creeping dread." },
+  { title: "2001: A Space Odyssey", year: 1968, tags: ["scifi", "mystery", "drama"], blurb: "Kubrick's meditation on humanity, consciousness, and the cosmos." },
+  { title: "Rashomon", year: 1950, tags: ["mystery", "drama", "classic"], blurb: "Kurosawa's fractured narrative—four versions of one crime." },
+  { title: "Chinatown", year: 1974, tags: ["thriller", "mystery", "drama"], blurb: "The greatest neo-noir—LA corruption at its most corrupt and beautiful." },
+  { title: "Taxi Driver", year: 1976, tags: ["thriller", "drama", "mystery"], blurb: "De Niro's descent into urban decay and psychological collapse." },
+  { title: "Jaws", year: 1975, tags: ["thriller", "action", "drama"], blurb: "Spielberg's blockbuster—a shark that terrifies and haunts." },
+  { title: "Stalker", year: 1979, tags: ["scifi", "mystery", "drama"], blurb: "Tarkovsky's Soviet journey into a mysterious zone and human desire." },
+  { title: "The 400 Blows", year: 1959, tags: ["drama", "comedy"], blurb: "Truffaut's New Wave classic—a boy's longing and rebellion in Paris." },
+  { title: "Playtime", year: 1967, tags: ["comedy", "feelgood", "drama"], blurb: "Tati's visual symphony of modern Paris—deadpan and absurdist." },
+
+  // 1980s-1990s
+  { title: "Blade Runner", year: 1982, tags: ["scifi", "thriller", "mystery"], blurb: "A neo-noir about androids—moody, philosophical, and haunting." },
+  { title: "Blue Velvet", year: 1986, tags: ["thriller", "mystery", "drama"], blurb: "Lynch's dark dreamscape beneath small-town American normalcy." },
+  { title: "The Princess Bride", year: 1987, tags: ["romance", "comedy", "feelgood", "classic"], blurb: "Adventure, romance, pirate ships, and endlessly quotable wit." },
+  { title: "Before Sunrise", year: 1995, tags: ["romance", "drama", "classic"], blurb: "Two strangers, one night in Vienna, all conversation and connection." },
+  { title: "Pulp Fiction", year: 1994, tags: ["thriller", "crime", "drama"], blurb: "Tarantino's nonlinear crime epic—darkly funny and explosively violent." },
+  { title: "LA Confidential", year: 1997, tags: ["thriller", "mystery", "drama"], blurb: "1950s LA corruption—stylish, menacing, and intricately plotted." },
+  { title: "Come and See", year: 1985, tags: ["thriller", "drama"], blurb: "Soviet WWII horror—a boy's apocalyptic journey through war's hell." },
+  { title: "Ran", year: 1985, tags: ["drama", "action", "classic"], blurb: "Kurosawa's King Lear adaptation—epic, tragic, and painted in blood." },
+  { title: "Wings of Desire", year: 1987, tags: ["drama", "romance"], blurb: "Wenders' Berlin poetry—angels observe humanity with longing and wonder." },
+
+  // 2000s
+  { title: "Mulholland Drive", year: 2001, tags: ["thriller", "mystery", "drama"], blurb: "Lynch's fractured Hollywood nightmare—beautiful, baffling, haunting." },
+  { title: "Spirited Away", year: 2001, tags: ["feelgood", "scifi", "classic"], blurb: "Miyazaki's dreamlike adventure—pure magic and wonder for all ages." },
+  { title: "The Silence of the Lambs", year: 1991, tags: ["thriller", "mystery", "drama"], blurb: "Hopkins steals every scene—cinema's most sophisticated and charming killer." },
+  { title: "Zodiac", year: 2007, tags: ["mystery", "thriller", "drama"], blurb: "A meticulous obsession across decades—Fincher's slow-burn hunt." },
+  { title: "Sin City", year: 2005, tags: ["thriller", "crime", "drama"], blurb: "Hyper-stylized noir—comic panels brought brutally to life." },
+  { title: "Brick", year: 2005, tags: ["mystery", "thriller", "drama"], blurb: "High school noir—hardboiled detective fiction meets teenager angst." },
+  { title: "Superbad", year: 2007, tags: ["comedy", "feelgood"], blurb: "Raunchy, sweet, and perfectly tuned—a comedy about real friendship." },
+  { title: "Requiem for a Dream", year: 2000, tags: ["thriller", "drama"], blurb: "A descent into addiction—visceral, heartbreaking, and unforgettable." },
+  { title: "Pan's Labyrinth", year: 2006, tags: ["fantasy", "thriller", "drama"], blurb: "Del Toro's Spanish Civil War fantasy—dark, magical, and devastating." },
+  { title: "Eternal Sunshine of the Spotless Mind", year: 2004, tags: ["scifi", "romance", "drama"], blurb: "A bittersweet sci-fi romance about memory, love, and erasure." },
+
+  // 2010s-Present
+  { title: "Inception", year: 2010, tags: ["scifi", "action", "mystery"], blurb: "A heist inside dreams within dreams—endlessly inventive architecture." },
+  { title: "Drive", year: 2011, tags: ["thriller", "crime", "drama", "minimalist", "neon-noir"], blurb: "A quiet driver with a violent code—neon-soaked and hypnotic." },
+  { title: "A Separated Woman", year: 2011, tags: ["drama"], blurb: "Iranian family drama—intimate, crushing, and deeply human." },
+  { title: "Nightcrawler", year: 2014, tags: ["thriller", "drama", "mystery"], blurb: "A parasitic climb through LA's late-night news underbelly." },
+  { title: "Mad Max: Fury Road", year: 2015, tags: ["action", "scifi", "modern"], blurb: "Two hours of gorgeous, relentless chase through apocalyptic wastelands." },
+  { title: "The Nice Guys", year: 2016, tags: ["comedy", "action", "mystery", "modern"], blurb: "A buddy detective romp through 1970s LA—genuinely hilarious." },
+  { title: "Arrival", year: 2016, tags: ["scifi", "drama", "mystery", "modern"], blurb: "A thoughtful first-contact story about language, time, and sacrifice." },
+  { title: "Blade Runner 2049", year: 2017, tags: ["scifi", "mystery", "drama", "modern"], blurb: "Hypnotic, melancholy sci-fi noir—gorgeous desolation." },
+  { title: "Get Out", year: 2017, tags: ["thriller", "mystery", "modern"], blurb: "A horror-thriller with sharp social commentary and genuine scares." },
+  { title: "Paddington 2", year: 2017, tags: ["feelgood", "comedy", "modern"], blurb: "Astonishingly wholesome, clever, and funny for all ages." },
+  { title: "A Ghost Story", year: 2017, tags: ["drama", "mystery"], blurb: "A quiet meditation on grief, time, and lingering love." },
+  { title: "Spider-Man: Into the Spider-Verse", year: 2018, tags: ["action", "feelgood", "scifi", "modern"], blurb: "A jaw-dropping animated thrill—comic panels and big heart." },
+  { title: "Burning", year: 2018, tags: ["mystery", "drama"], blurb: "A slow-burn South Korean thriller about class, jealousy, and secrets." },
+  { title: "Once Upon a Time in Hollywood", year: 2019, tags: ["comedy", "drama", "classic"], blurb: "Tarantino's love letter to 1960s Hollywood—stylish and unexpectedly warm." },
+  { title: "Parasite", year: 2019, tags: ["thriller", "drama", "mystery", "modern"], blurb: "A razor-sharp South Korean class satire that's darkly brilliant." },
+  { title: "Knives Out", year: 2019, tags: ["mystery", "comedy", "modern"], blurb: "A witty whodunit with a killer ensemble and genuine surprises." },
+  { title: "The Grand Budapest Hotel", year: 2014, tags: ["comedy", "feelgood", "modern"], blurb: "A whimsical caper across decades—Wes Anderson's visual poetry." },
+  { title: "Whiplash", year: 2014, tags: ["drama", "thriller", "modern"], blurb: "An intense duel between a drummer and his abusive mentor." },
+  { title: "Everything Everywhere All at Once", year: 2022, tags: ["scifi", "comedy", "drama", "action", "modern"], blurb: "Multiverse chaos with a huge heart—wild, weird, and beautiful." },
+  { title: "Drive My Car", year: 2021, tags: ["drama", "mystery"], blurb: "A Japanese meditation on grief, theater, and human connection." },
+  { title: "The Lighthouse", year: 2019, tags: ["thriller", "drama"], blurb: "Two men, one island, black-and-white madness and isolation." },
+  { title: "The Young Girls of Rochefort", year: 1967, tags: ["romance", "comedy", "feelgood", "classic"], blurb: "Demy's candy-colored French musical—color, dance, and romantic serendipity." },
+  { title: "The Umbrellas of Cherbourg", year: 1964, tags: ["romance", "feelgood", "classic"], blurb: "Another Demy masterpiece—pastel worlds and bittersweet love." },
+  { title: "Amélie", year: 2001, tags: ["romance", "feelgood", "comedy", "modern"], blurb: "A whimsical Paris romance—quirky, charming, and utterly enchanting." },
+  { title: "Midnight in Paris", year: 2011, tags: ["romance", "comedy", "feelgood"], blurb: "A nostalgic romance across time—Paris and artistic longing." },
+
+  // More Asian films
+  { title: "Crouching Tiger, Hidden Dragon", year: 2000, tags: ["action", "drama", "romance", "wuxia", "poetic"], blurb: "A Taiwanese wuxia epic—elegant martial arts and forbidden love." },
+  { title: "Hero", year: 2002, tags: ["action", "drama", "wuxia", "stylized"], blurb: "Zhang Yimou's color-saturated martial arts epic—sacrifice and honor." },
+  { title: "House of Flying Daggers", year: 2004, tags: ["action", "romance", "drama", "wuxia", "stylized"], blurb: "Zhang Yimou's visual masterpiece—martial arts, romance, and betrayal." },
+  { title: "The Grandmaster", year: 2013, tags: ["action", "drama", "romance", "wuxia"], blurb: "Wong Kar-wai's kung fu epic—elegance, loss, and artistic movement." },
+  { title: "Police Story", year: 1985, tags: ["action", "comedy", "thriller"], blurb: "Jackie Chan's masterpiece—death-defying stunts and infectious charm." },
+  { title: "Once Upon a Time in China", year: 1991, tags: ["action", "drama", "adventure"], blurb: "Jet Li as Wong Fei-hung—martial arts and Chinese pride." },
+  { title: "Kung Fu Hustle", year: 2004, tags: ["action", "comedy", "drama"], blurb: "Stephen Chow's kung fu comedy—slapstick, heart, and astonishing fight scenes." },
+
+  // Samurai films
+  { title: "Throne of Blood", year: 1957, tags: ["thriller", "drama", "classic"], blurb: "Kurosawa's Macbeth adaptation—samurai ambition and dark fate." },
+  { title: "Sanjuro", year: 1962, tags: ["action", "drama", "classic"], blurb: "Kurosawa's samurai action—intrigue, violence, and political betrayal." },
+  { title: "Samurai Rebellion", year: 1967, tags: ["drama", "action", "thriller"], blurb: "A samurai's defiant stand against the clan—tragic and powerful." },
+  { title: "Kagemusha", year: 1980, tags: ["drama", "action", "classic"], blurb: "Kurosawa's epic of a peasant posing as a warlord—gorgeous and tragic." },
+  { title: "Twilight Samurai", year: 2002, tags: ["drama", "action"], blurb: "A humble samurai in decline—quiet, melancholic, profoundly moving." },
+  { title: "The Hidden Blade", year: 2004, tags: ["drama", "action"], blurb: "Yamada's samurai meditation—duty, honor, and impossible love." },
+  { title: "13 Assassins", year: 2010, tags: ["action", "thriller", "drama"], blurb: "Miike's brutal samurai epic—thirteen warriors against a tyrant." },
+  { title: "Sword of Vengeance", year: 1945, tags: ["action", "drama"], blurb: "A classic samurai revenge tale—honor and bloodshed." },
+
+  // More martial arts films
+  { title: "Enter the Dragon", year: 1973, tags: ["action", "thriller"], blurb: "Bruce Lee's only complete film—the king of kung fu in peak form." },
+  { title: "The Big Boss", year: 1971, tags: ["action", "thriller", "drama"], blurb: "Bruce Lee's debut—raw, explosive martial arts power." },
+  { title: "Fist of Fury", year: 1972, tags: ["action", "drama"], blurb: "Bruce Lee's revenge masterpiece—fury, precision, and speed." },
+  { title: "Way of the Dragon", year: 1972, tags: ["action", "thriller"], blurb: "Bruce Lee written and directed—a tourist in Rome seeking justice." },
+  { title: "Drunken Master", year: 1978, tags: ["action", "comedy"], blurb: "Jackie Chan's breakthrough—kung fu slapstick and incredible stunts." },
+  { title: "Project A", year: 1983, tags: ["action", "comedy", "adventure"], blurb: "Jackie Chan as a pirate hunter—gravity-defying stunt comedy." },
+  { title: "Armour of God", year: 1986, tags: ["action", "adventure", "comedy"], blurb: "Jackie Chan's globe-trotting adventure—stunts, humor, and danger." },
+  { title: "The Raid", year: 2011, tags: ["action", "thriller"], blurb: "Indonesian martial arts masterpiece—relentless, brutal, hypnotic." },
+  { title: "The Raid 2", year: 2014, tags: ["action", "thriller", "drama"], blurb: "An even more ambitious sequel—crime saga with jaw-dropping choreography." },
+  { title: "Hard Boiled", year: 1992, tags: ["action", "thriller", "crime"], blurb: "Woo's Hong Kong action classic—gunfights, doves, and ballet violence." },
+  { title: "IP Man", year: 2008, tags: ["action", "drama"], blurb: "Donnie Yen as the wing chun master—martial arts with historical weight." },
+  { title: "Ong-Bak", year: 2003, tags: ["action", "thriller"], blurb: "Tony Jaa's Thai martial arts explosion—acrobatic, no-wire stunts." },
+  { title: "The Protector", year: 2005, tags: ["action", "thriller", "drama"], blurb: "Tony Jaa's revenge epic—brutal Thai action and emotional depth." },
+  { title: "Fist of Legend", year: 1994, tags: ["action", "drama"], blurb: "Jet Li as Chen Zhen—kung fu mastery and anti-Japanese resistance." },
+  { title: "The Man from Nowhere", year: 2010, tags: ["action", "thriller", "drama"], blurb: "Won Bin's Korean action thriller—a man emerges from solitude for revenge." },
+  { title: "Warrior", year: 2011, tags: ["action", "drama", "thriller"], blurb: "A former MMA fighter re-enters the cage—family, honor, and redemption." },
+  { title: "Unleashed", year: 2005, tags: ["action", "thriller", "drama"], blurb: "Jet Li as a man raised like a weapon—emotional and visceral action." },
+  { title: "The Night Comes for Us", year: 2018, tags: ["action", "thriller", "crime"], blurb: "Indonesian action spectacle—a former assassin's violent redemption." },
+  { title: "RRR", year: 2022, tags: ["action", "adventure", "drama"], blurb: "A Telugu action epic—two warriors, impossible stunts, massive heart." },
+  { title: "Flashpoint", year: 2007, tags: ["action", "thriller", "drama"], blurb: "Donnie Yen's final undercover mission—bone-crushing action finale." },
+  { title: "Bloodsport", year: 1988, tags: ["action", "thriller", "drama"], blurb: "Van Damme's breakout—a soldier fights his way through a martial arts tournament." },
+  { title: "Kickboxer", year: 1989, tags: ["action", "thriller", "drama"], blurb: "Van Damme seeks revenge in Thailand—splits, kicks, and honor." },
+  { title: "Roadhouse", year: 1989, tags: ["action", "thriller", "drama"], blurb: "Patrick Swayze as a legendary bouncer—fists, philosophy, and principle." },
+  { title: "Best of the Best", year: 1989, tags: ["action", "drama"], blurb: "American martial artists compete against Korea—team spirit and respect." },
+  { title: "Kill Bill Vol. 1", year: 2003, tags: ["action", "thriller", "drama"], blurb: "Tarantino's samurai-influenced revenge—Uma Thurman's legendary comeback." },
+  { title: "Kill Bill Vol. 2", year: 2004, tags: ["action", "thriller", "drama"], blurb: "The conclusion—showdowns, revenge, and maternal love." },
+  { title: "Mortal Kombat", year: 1995, tags: ["action", "fantasy", "thriller"], blurb: "A martial arts tournament film—fantastical, campy, surprisingly fun." },
+  { title: "Merantau", year: 2009, tags: ["action", "thriller", "drama"], blurb: "Iko Uwais' Indonesian martial arts debut—young fighter seeks justice." },
+
+  // Western films
+  { title: "A Fistful of Dollars", year: 1964, tags: ["western", "action", "classic"], blurb: "Leone's spaghetti western masterpiece—Eastwood, dust, and moral ambiguity." },
+  { title: "For a Few Dollars More", year: 1965, tags: ["western", "action", "classic"], blurb: "The sequel—Eastwood and a bounty hunter face off in the Old West." },
+  { title: "The Good, the Bad and the Ugly", year: 1966, tags: ["western", "action", "classic"], blurb: "Leone's masterpiece—three gunslingers and buried gold, Ennio Morricone's score." },
+  { title: "Once Upon a Time in the West", year: 1968, tags: ["western", "action", "drama", "classic"], blurb: "Leone's operatic epic—a woman, a gunslinger, and a railroad baron." },
+  { title: "Rio Bravo", year: 1959, tags: ["western", "action", "classic"], blurb: "Hawks' Western—a sheriff and a drunk deputy defend a jail." },
+  { title: "The Searchers", year: 1956, tags: ["western", "drama", "classic"], blurb: "John Ford's masterpiece—a man's obsessive search and moral reckoning." },
+  { title: "Rio Grande", year: 1950, tags: ["western", "action", "classic"], blurb: "Ford's cavalry Western—duty, honor, and a broken marriage." },
+  { title: "True Grit", year: 1969, tags: ["western", "action", "classic"], blurb: "John Wayne's last great role—a girl hires a hard-drinking marshal." },
+  { title: "High Noon", year: 1952, tags: ["western", "thriller", "classic"], blurb: "A marshal awaits a showdown at noon—suspense in real time." },
+  { title: "The Wild Bunch", year: 1969, tags: ["western", "action", "thriller"], blurb: "Peckinpah's violent masterpiece—aging outlaws' final bloody ride." },
+  { title: "Butch Cassidy and the Sundance Kid", year: 1969, tags: ["western", "action", "comedy"], blurb: "Newman and Redford as outlaws—charm, humor, and tragic fate." },
+  { title: "The Magnificent Seven", year: 1960, tags: ["western", "action", "classic"], blurb: "Seven gunslinger heroes defend a village—iconic and rousing." },
+  { title: "The Outlaw Josey Wales", year: 1976, tags: ["western", "action", "thriller"], blurb: "Eastwood as a vengeful outlaw—a loner's quest for redemption." },
+  { title: "Unforgiven", year: 1992, tags: ["western", "thriller", "drama"], blurb: "Eastwood's meditation on violence—an aging outlaw's last job." },
+  { title: "Pale Rider", year: 1985, tags: ["western", "thriller", "drama"], blurb: "Eastwood as a mysterious preacher—justice and the supernatural." },
+  { title: "3:10 to Yuma", year: 2007, tags: ["western", "thriller", "drama"], blurb: "A farmer escorts an outlaw to a train—psychological cat-and-mouse." },
+  { title: "True Grit", year: 2010, tags: ["western", "action", "drama"], blurb: "Coen Brothers' remake—Hailee Steinfeld as a fierce young avenger." },
+  { title: "Django Unchained", year: 2012, tags: ["western", "action", "thriller"], blurb: "Tarantino's revisionist western—a freed slave seeks his wife." },
+  { title: "The Hateful Eight", year: 2015, tags: ["western", "thriller", "drama"], blurb: "Tarantino's chamber piece western—eight strangers in a cabin, one killer." },
+  { title: "Johnny Guitar", year: 1954, tags: ["western", "drama", "classic"], blurb: "A woman saloon owner vs. a mob boss—unusual, atmospheric western." },
+  { title: "The Man Who Shot Liberty Valance", year: 1962, tags: ["western", "drama", "classic"], blurb: "Ford's meditation on myth vs. reality—a hero's legend unmasked." },
+  { title: "Little Big Man", year: 1970, tags: ["western", "comedy", "drama"], blurb: "Dustin Hoffman as a white man raised by Cheyenne—picaresque and irreverent." },
+  { title: "Gunfight at the O.K. Corral", year: 1957, tags: ["western", "action", "classic"], blurb: "Wyatt Earp and Doc Holliday face the Clantons—iconic showdown." },
+  { title: "The Big Country", year: 1958, tags: ["western", "drama", "action"], blurb: "A wealthy easterner arrives in Texas—family feuds and land wars." },
+  { title: "Cat Ballou", year: 1965, tags: ["western", "comedy"], blurb: "Lee Marvin in a comic western—a woman forms an outlaw gang." },
+  { title: "Hombre", year: 1967, tags: ["western", "thriller", "action"], blurb: "A white man raised by Apache leads a stagecoach robbery—tense and tight." },
+  { title: "The Professionals", year: 1966, tags: ["western", "action", "thriller"], blurb: "Four mercenaries on a rescue mission—witty, explosive western." },
+  { title: "Tombstone", year: 1993, tags: ["western", "action", "thriller"], blurb: "Wyatt Earp and Doc Holliday vs. the Clanton gang—stylish and fun." },
+  { title: "News of the World", year: 2020, tags: ["western", "drama"], blurb: "Tom Hanks as a traveling news reader protecting an orphan girl." },
+  { title: "The Power of the Dog", year: 2021, tags: ["western", "drama", "thriller"], blurb: "A charismatic rancher's dark secrets—psychological, modernist western." },
+  { title: "Hostiles", year: 2018, tags: ["western", "drama", "action"], blurb: "A cavalry officer escorts a Cheyenne tribe home—grief and reconciliation." },
+  { title: "In the Mood for Love", year: 2000, tags: ["romance", "drama", "poetic", "melancholic", "stylized"], blurb: "Wong Kar-wai's Hong Kong masterpiece—lush, melancholic, gorgeously stylized." },
+  { title: "Chungking Express", year: 1994, tags: ["romance", "comedy", "drama", "playful", "whimsical", "indie"], blurb: "Hong Kong indie romance—fragmented, playful, and achingly romantic." },
+  { title: "Oldboy", year: 2003, tags: ["thriller", "action", "mystery"], blurb: "A South Korean revenge thriller—visceral, twisted, and unforgettable." },
+  { title: "A Tale of Two Sisters", year: 2003, tags: ["thriller", "mystery", "drama"], blurb: "A South Korean gothic horror—beautiful, eerie, and haunting." },
+  { title: "Spring, Summer, Fall, Winter... and Spring", year: 2003, tags: ["drama", "feelgood"], blurb: "A Korean Buddhist meditation on seasons, life, and redemption." },
+  { title: "Uncle Boonmee Who Can Recall His Past Lives", year: 2010, tags: ["drama", "mystery"], blurb: "A Thai film about memory, death, and family across lifetimes." },
+  { title: "Lagaan", year: 2001, tags: ["drama", "action", "classic"], blurb: "An Indian epic about cricket, resistance, and colonial India." },
+  { title: "Devdas", year: 2002, tags: ["romance", "drama"], blurb: "A Bollywood epic—passionate, tragic, extravagantly beautiful." },
+  { title: "Monsoon Wedding", year: 2001, tags: ["romance", "comedy", "feelgood"], blurb: "An Indian family comedy-drama about love, secrets, and celebration." },
+  { title: "Farewell My Concubine", year: 1993, tags: ["drama", "mystery"], blurb: "A Chinese epic spanning decades—theater, politics, and tragic love." },
+
+  // Latin American films
+  { title: "City of God", year: 2002, tags: ["thriller", "drama", "action"], blurb: "A Brazilian favela story—brutal, energetic, heartbreaking." },
+  { title: "Y Tu Mamá También", year: 2001, tags: ["comedy", "drama", "feelgood"], blurb: "A Mexican road trip—sexy, funny, and surprisingly poignant." },
+  { title: "Central Station", year: 1998, tags: ["drama", "feelgood"], blurb: "A Brazilian unlikely friendship—spare, touching, and humanistic." },
+  { title: "The Secret in Their Eyes", year: 2009, tags: ["thriller", "mystery", "drama"], blurb: "An Argentine noir about justice, obsession, and hidden trauma." },
+  { title: "Wild Tales", year: 2014, tags: ["thriller", "comedy", "drama"], blurb: "Argentine vignettes of revenge and chaos—darkly comedic and brutal." },
+  { title: "A Fantastic Woman", year: 2017, tags: ["drama", "mystery"], blurb: "A Chilean woman fights for her truth—haunting, defiant, beautiful." },
+
+  // More European films
+  { title: "Cinema Paradiso", year: 1988, tags: ["drama", "comedy", "feelgood", "classic"], blurb: "An Italian love letter to cinema—nostalgic, warm, and bittersweet." },
+  { title: "The Seventh Seal", year: 1957, tags: ["drama", "mystery", "classic", "existential", "philosophical", "dark", "theological"], blurb: "Bergman's knight plays chess with Death—existential and unforgettable." },
+  { title: "Cries and Whispers", year: 1972, tags: ["drama", "thriller", "existential", "philosophical", "intimate"], blurb: "Bergman's intimate family tragedy—raw, intense, and visually stunning." },
+  { title: "L'Avventura", year: 1960, tags: ["drama", "mystery", "classic"], blurb: "Antonioni's Italian masterpiece—ennui, desire, and moral ambiguity." },
+  { title: "Amarcord", year: 1973, tags: ["comedy", "drama", "classic"], blurb: "Fellini's autobiographical dreamscape—Fascist Italy through memory." },
+  { title: "Ashes and Diamonds", year: 1958, tags: ["thriller", "drama", "classic"], blurb: "A Polish WWII noir—doomed youth and political violence." },
+  { title: "The Three-Body Problem", year: 2023, tags: ["scifi", "mystery", "drama"], blurb: "A Chinese sci-fi epic spanning time and worlds—ambitious and haunting." },
+  { title: "Dancer in the Dark", year: 2000, tags: ["drama", "thriller"], blurb: "A Danish musical-tragedy—devastating and unconventional." },
+  { title: "The Vanishing", year: 1988, tags: ["thriller", "mystery", "drama"], blurb: "A Dutch psychological thriller—dark, unsettling, and unforgettable." },
+
+  // More Asian films (continued)
+  { title: "The Handmaiden", year: 2016, tags: ["thriller", "mystery", "romance"], blurb: "A South Korean period thriller—intricate, sensual, twisty." },
+  { title: "Thief", year: 2020, tags: ["thriller", "drama"], blurb: "A South Korean cat-and-mouse game—stylish and propulsive." },
+  { title: "The Wailing", year: 2016, tags: ["thriller", "mystery", "drama"], blurb: "A South Korean mystery-horror—sprawling, paranoid, brilliant." },
+  { title: "Ran", year: 1985, tags: ["drama", "action", "classic"], blurb: "Kurosawa's King Lear—epic, tragic, stained with blood." },
+  { title: "Sword of Doom", year: 1966, tags: ["action", "thriller"], blurb: "A Japanese samurai noir—bleak, violent, visually stunning." },
+  { title: "Woman in the Dunes", year: 1964, tags: ["mystery", "drama"], blurb: "A Japanese existential nightmare—sand, sex, and entrapment." },
+  { title: "Days of Being Wild", year: 1990, tags: ["drama", "romance", "melancholic", "stylized", "poetic"], blurb: "Wong Kar-wai's Hong Kong tragedy—neon-lit and beautifully melancholic." },
+  { title: "Pulse", year: 2001, tags: ["thriller", "mystery"], blurb: "A Japanese tech-horror—lonely, eerie, and profoundly unsettling." },
+  { title: "Karate Kid", year: 1984, tags: ["action", "feelgood", "comedy"], blurb: "A Japanese mentor tale—discipline, honor, and underdog triumph." },
+  { title: "Howl's Moving Castle", year: 2004, tags: ["fantasy", "feelgood"], blurb: "Miyazaki's whimsical romance—gorgeous animation and emotional depth." },
+  { title: "In the Realm of the Senses", year: 1976, tags: ["drama", "thriller"], blurb: "Oshima's transgressive love story—obsession and eroticism in wartime Japan." },
+  { title: "Shall We Dance", year: 1996, tags: ["romance", "comedy", "feelgood"], blurb: "A salesman discovers ballroom dancing—joy, shame, and human connection." },
+  { title: "After Life", year: 1998, tags: ["drama", "fantasy"], blurb: "Koreeda's meditation on memory—the dead choose one memory to relive." },
+  { title: "Fireworks", year: 1997, tags: ["drama", "thriller"], blurb: "Takeshi Kitano's yakuza poetry—neon nights and quiet destruction." },
+  { title: "Violent Cop", year: 1989, tags: ["thriller", "crime", "drama"], blurb: "Takeshi Kitano's directorial debut—an unhinged cop's moral descent." },
+  { title: "Sonatine", year: 1993, tags: ["thriller", "crime", "drama"], blurb: "Kitano's yakuza film—violence, futility, and unexpected tenderness." },
+  { title: "Ringu", year: 1998, tags: ["thriller", "mystery", "horror"], blurb: "A cursed videotape kills viewers in seven days—Japanese horror masterpiece." },
+  { title: "Audition", year: 1999, tags: ["thriller", "mystery", "horror"], blurb: "Miike's shocking film—a man auditions actresses for love, finds horror." },
+  { title: "The Pillow Book", year: 1996, tags: ["drama", "fantasy", "artistic"], blurb: "Peter Greenaway's baroque vision—calligraphy, eroticism, and art." },
+  { title: "Café Lumière", year: 2003, tags: ["drama", "romance"], blurb: "Hou Hsiao-hsien's love letter to Tokyo—trains, coffee, and quiet moments." },
+
+  // African films
+  { title: "Tsotsi", year: 2005, tags: ["thriller", "drama"], blurb: "A South African street crime story—brutal yet humanizing." },
+  { title: "District 9", year: 2009, tags: ["scifi", "action", "thriller"], blurb: "A South African apartheid allegory—visceral sci-fi with social edge." },
+  { title: "Touki Bouki", year: 1973, tags: ["drama", "romance"], blurb: "A Senegalese road movie—poetic, experimental, and daring." },
+  { title: "Half of a Yellow Sun", year: 2013, tags: ["drama", "romance"], blurb: "A Nigerian-British story during the Biafran War—sweeping and tragic." },
+
+  // More European/International
+  { title: "Trainspotting", year: 1996, tags: ["thriller", "drama"], blurb: "A Scottish heroin descent—visceral, darkly funny, iconic." },
+  { title: "In the Loop", year: 2009, tags: ["comedy", "thriller", "drama"], blurb: "A British-American political satire—razor-sharp and profane." },
+  { title: "The Lives of Others", year: 2006, tags: ["thriller", "mystery", "drama"], blurb: "A German Cold War spy thriller—tense, intimate, and morally complex." },
+  { title: "4 Months, 3 Weeks and 2 Days", year: 2007, tags: ["thriller", "drama"], blurb: "A Romanian abortion thriller under Ceaușescu—bleak and brilliant." },
+  { title: "Holy Motors", year: 2012, tags: ["mystery", "drama"], blurb: "A French surrealist odyssey—experimental, transportive, bewildering." },
+  { title: "Tangerine", year: 2015, tags: ["comedy", "drama"], blurb: "A Los Angeles transgender story—raw, funny, deeply human." },
+  { title: "Thelma", year: 2017, tags: ["thriller", "mystery", "drama"], blurb: "A Norwegian supernatural thriller—gorgeous, eerie, and ominous." },
+
+  // 1930s American
+  { title: "King Kong", year: 1933, tags: ["action", "scifi", "classic"], blurb: "A giant ape on New York—monster mayhem and tragic beauty." },
+  { title: "It Happened One Night", year: 1934, tags: ["romance", "comedy", "classic"], blurb: "A roadside romance—screwball perfection with heart." },
+  { title: "Top Hat", year: 1935, tags: ["comedy", "romance", "feelgood", "classic"], blurb: "Astaire and Rogers—tap dancing elegance and romantic magic." },
+  { title: "Modern Times", year: 1936, tags: ["comedy", "drama", "classic"], blurb: "Chaplin's silent masterpiece—factory chaos and social satire." },
+  { title: "The Great Dictator", year: 1940, tags: ["comedy", "drama", "classic"], blurb: "Chaplin takes on fascism—biting satire and unexpected humanity." },
+  { title: "Stagecoach", year: 1939, tags: ["action", "drama", "western"], blurb: "Ford's Western classic—outlaws, romance, and desert standoffs." },
+  { title: "Mr. Smith Goes to Washington", year: 1939, tags: ["drama", "comedy", "classic"], blurb: "Capra's idealism—a small-town man fights political corruption." },
+  { title: "The Wizard of Oz", year: 1939, tags: ["fantasy", "feelgood", "classic"], blurb: "A girl, a tornado, and a yellow brick road—timeless magic." },
+  { title: "The Philadelphia Story", year: 1940, tags: ["romance", "comedy", "classic"], blurb: "Grant, Stewart, and Hepburn—sparkling romance and witty repartee." },
+
+  // 1940s American
+  { title: "Notorious", year: 1946, tags: ["thriller", "mystery", "romance"], blurb: "Hitchcock and Bergman—espionage, passion, and moral ambiguity." },
+  { title: "The Big Sleep", year: 1946, tags: ["mystery", "thriller", "classic"], blurb: "Bogart and Bacall in Chandler's labyrinthine LA noir." },
+  { title: "The Killers", year: 1946, tags: ["thriller", "crime", "classic"], blurb: "A man awaits death—noir flashbacks and fatalism." },
+  { title: "Out of the Past", year: 1947, tags: ["thriller", "crime", "mystery"], blurb: "A classic noir—femme fatale, betrayal, and inescapable fate." },
+  { title: "The Lady from Shanghai", year: 1947, tags: ["thriller", "crime", "mystery"], blurb: "Welles' baroque noir—hall of mirrors and femme fatale games." },
+  { title: "Red River", year: 1948, tags: ["western", "drama", "action"], blurb: "Hawks' Western—cattle drive, father-son conflict, and frontier brutality." },
+  { title: "The Red Shoes", year: 1948, tags: ["drama", "romance", "fantasy"], blurb: "A British ballet obsession—gorgeous production design and tragic passion." },
+  { title: "Kind Hearts and Coronets", year: 1949, tags: ["comedy", "thriller", "classic"], blurb: "A British comedy—one actor plays eight roles in a murder spree." },
+  { title: "Gun Crazy", year: 1950, tags: ["crime", "thriller", "classic"], blurb: "An early lovers-on-the-run noir—raw and ahead of its time." },
+  { title: "In a Lonely Place", year: 1950, tags: ["thriller", "mystery", "drama"], blurb: "Bogart as a Hollywood noir—paranoia, rage, and false accusation." },
+
+  // 1950s American
+  { title: "A Streetcar Named Desire", year: 1951, tags: ["drama", "thriller"], blurb: "Brando's raw rage—Tennessee Williams' steamy New Orleans tragedy." },
+  { title: "The African Queen", year: 1951, tags: ["adventure", "romance", "classic"], blurb: "Bogart and Hepburn—a whiskey captain and a missionary on the Congo." },
+  { title: "An American in Paris", year: 1951, tags: ["romance", "comedy", "feelgood", "classic"], blurb: "A GI falls for Paris and a girl—Gershwin and gorgeous dance." },
+  { title: "A Place in the Sun", year: 1951, tags: ["drama", "romance", "thriller"], blurb: "A poor man's ambition and doomed love—Liz Taylor in noir tragedy." },
+  { title: "The Big Heat", year: 1953, tags: ["thriller", "crime", "mystery"], blurb: "A cop seeks revenge—Fritz Lang's brutal underworld noir." },
+  { title: "Gentlemen Prefer Blondes", year: 1953, tags: ["comedy", "romance", "feelgood", "classic"], blurb: "Marilyn Monroe shines—'Diamonds Are a Girl's Best Friend'." },
+  { title: "Roman Holiday", year: 1953, tags: ["romance", "comedy", "feelgood", "classic"], blurb: "Audrey Hepburn's debut—a princess and a reporter in Rome." },
+  { title: "Sabrina", year: 1954, tags: ["romance", "comedy", "classic"], blurb: "Audrey between two brothers—elegance, charm, and wit." },
+  { title: "Rebel Without a Cause", year: 1955, tags: ["drama", "thriller"], blurb: "James Dean's classic—troubled youth, suburban angst, and speed." },
+  { title: "Picnic", year: 1955, tags: ["romance", "drama", "classic"], blurb: "A drifter arrives—summer passion in a small Kansas town." },
+  { title: "Giant", year: 1956, tags: ["drama", "classic"], blurb: "An epic Texas saga—oil, class, racism, and family conflict." },
+  { title: "The Ladykillers", year: 1955, tags: ["comedy", "crime", "classic"], blurb: "A British criminal gang poses as musicians—darkly comic chaos." },
+  { title: "Sweet Smell of Success", year: 1957, tags: ["thriller", "crime", "mystery"], blurb: "A gossip columnist's dark reign—venomous NYC noir poetry." },
+  { title: "Funny Face", year: 1957, tags: ["romance", "comedy", "feelgood", "classic"], blurb: "Audrey and Astaire—Paris fashion and romantic magic." },
+  { title: "North by Northwest", year: 1959, tags: ["thriller", "action", "classic"], blurb: "Hitchcock's mistaken identity thriller—crop dusting and Mount Rushmore." },
+  { title: "Some Like It Hot", year: 1959, tags: ["comedy", "feelgood", "classic"], blurb: "Two men disguise as women—the greatest comedy ever made." },
+  { title: "Anatomy of a Murder", year: 1959, tags: ["thriller", "mystery", "drama"], blurb: "A small-town murder trial—legal procedural and moral complexity." },
+
+  // 1960s American
+  { title: "Ocean's 11", year: 1960, tags: ["heist", "comedy", "classic"], blurb: "Sinatra's cool heist caper—Vegas, charm, and style." },
+  { title: "Breakfast at Tiffany's", year: 1961, tags: ["romance", "comedy", "classic"], blurb: "Audrey as Holly Golightly—New York, Givenchy, and wistful romance." },
+  { title: "West Side Story", year: 1961, tags: ["romance", "drama", "musical", "classic"], blurb: "A New York gang musical—tragic Romeo and Juliet reimagined." },
+  { title: "A Raisin in the Sun", year: 1961, tags: ["drama", "classic"], blurb: "A Black family's dreams—Hansberry's powerful American play." },
+  { title: "The Manchurian Candidate", year: 1962, tags: ["thriller", "mystery", "drama"], blurb: "Cold War paranoia and political intrigue—creeping dread." },
+  { title: "Lolita", year: 1962, tags: ["thriller", "mystery", "drama"], blurb: "Kubrick's adaptation—controversial, uncomfortable, brilliant." },
+  { title: "Hud", year: 1963, tags: ["drama"], blurb: "Paul Newman as an amoral Texan—cynicism and family conflict." },
+  { title: "The Great Escape", year: 1963, tags: ["action", "adventure", "classic"], blurb: "WWII POW escape—McQueen, Coburn, and heist thrills." },
+  { title: "Charade", year: 1963, tags: ["thriller", "mystery", "romance"], blurb: "Audrey and Grant in Paris—witty espionage and playful romance." },
+  { title: "Goldfinger", year: 1964, tags: ["action", "classic"], blurb: "Bond at his peak—Connery, gadgets, and a golden villain." },
+  { title: "Marnie", year: 1964, tags: ["thriller", "mystery", "drama"], blurb: "Hitchcock and Tippi Hedren—psychological darkness and obsession." },
+  { title: "The Pawnbroker", year: 1964, tags: ["drama", "thriller"], blurb: "A Holocaust survivor's moral decay—dark, visceral, unflinching." },
+  { title: "The Graduate", year: 1967, tags: ["comedy", "drama", "classic"], blurb: "Dustin Hoffman's youth adrift—California ennui and seduction." },
+  { title: "Guess Who's Coming to Dinner", year: 1967, tags: ["drama", "comedy", "classic"], blurb: "Sidney Poitier breaks barriers—race and family in 1960s America." },
+  { title: "In the Heat of the Night", year: 1967, tags: ["thriller", "mystery", "drama"], blurb: "Poitier and Rod Steiger—a Black detective in the Deep South." },
+  { title: "Bonnie and Clyde", year: 1967, tags: ["crime", "thriller", "action"], blurb: "Beatty and Dunaway—bank robbers and bloody romance." },
+
+  // 1930s-1960s International
+  { title: "La Grande Illusion", year: 1937, tags: ["drama", "classic"], blurb: "A French WWI masterpiece—friendship across class and war." },
+  { title: "La Bête Humaine", year: 1938, tags: ["thriller", "drama", "classic"], blurb: "Renoir's doomed French passion—fate and fatalism on the rails." },
+  { title: "Rules of the Game", year: 1939, tags: ["comedy", "drama", "classic"], blurb: "Renoir's French masterpiece—a house party and human folly." },
+  { title: "Black Narcissus", year: 1946, tags: ["drama", "mystery"], blurb: "British nuns in the Himalayas—Technicolor and repressed passion." },
+  { title: "Odd Man Out", year: 1947, tags: ["thriller", "drama"], blurb: "A British-Irish noir—fugitive in post-war Belfast." },
+  { title: "Stray Dog", year: 1949, tags: ["mystery", "thriller", "drama"], blurb: "Kurosawa's noir—a cop's lost pistol in postwar Tokyo." },
+  { title: "Variety Lights", year: 1950, tags: ["drama", "comedy", "classic"], blurb: "Fellini's debut—shabby variety shows and show business dreams." },
+  { title: "Umberto D.", year: 1952, tags: ["drama", "classic"], blurb: "Italian neorealism—an old pensioner and his dignity." },
+  { title: "Early Summer", year: 1951, tags: ["drama", "feelgood", "classic"], blurb: "Ozu's Japanese family meditation—quiet, profound, bittersweet." },
+  { title: "The Magician", year: 1958, tags: ["mystery", "drama"], blurb: "Bergman's Swedish mind game—illusion, faith, and deception." },
+  { title: "Smiles of a Summer Night", year: 1955, tags: ["comedy", "romance", "classic"], blurb: "Bergman's Swedish romantic comedy—sophisticated, witty, and bittersweet." },
+  { title: "Wild Strawberries", year: 1957, tags: ["drama", "classic"], blurb: "Bergman's Swedish meditation—memory, mortality, and regret." },
+  { title: "The Cranes Are Flying", year: 1957, tags: ["drama", "romance"], blurb: "A Soviet WWII romance—sweeping, tragic, humanistic." },
+  { title: "Ballad of a Soldier", year: 1959, tags: ["drama", "romance", "classic"], blurb: "A Soviet soldier's furlough—gentle, poignant wartime romance." },
+  { title: "Hiroshima Mon Amour", year: 1959, tags: ["drama", "romance", "mystery"], blurb: "A French-Japanese love affair—memory and the bomb's shadow." },
+  { title: "Breathless", year: 1960, tags: ["thriller", "crime", "drama", "romance", "playful", "new-wave", "classic"], blurb: "Godard's French New Wave—Belmondo, a stolen car, and the cops." },
+  { title: "La Jetée", year: 1962, tags: ["scifi", "mystery"], blurb: "A French photo-novella—time travel, love, and nuclear war." },
+  { title: "Last Year at Marienbad", year: 1961, tags: ["mystery", "drama"], blurb: "An experimental puzzle—memory, reality, and baroque uncertainty." },
+  { title: "Harakiri", year: 1962, tags: ["drama", "thriller"], blurb: "A Japanese samurai tragedy—honor, ritual, and revenge." },
+  { title: "The Leopard", year: 1963, tags: ["drama", "classic"], blurb: "An Italian epic—aristocracy in 1860s Sicily during revolution." },
+  { title: "La Dolce Vita", year: 1960, tags: ["drama", "comedy", "classic", "baroque", "surreal"], blurb: "Fellini's Rome—scandal, nightlife, and existential ennui." },
+  { title: "8½", year: 1963, tags: ["drama", "mystery", "classic", "baroque", "dreamlike"], blurb: "Fellini's masterpiece—a director's midlife crisis and creative chaos." },
+  { title: "Vivre Sa Vie", year: 1962, tags: ["drama", "experimental", "new-wave"], blurb: "Godard's portrait of a Parisian woman—fragmented and philosophical." },
+  { title: "Contempt", year: 1964, tags: ["drama", "mystery", "experimental", "new-wave"], blurb: "Godard's color-soaked cinema—marriage, filmmaking, and mythology." },
+  { title: "Pierrot le Fou", year: 1965, tags: ["crime", "drama", "experimental", "new-wave"], blurb: "Godard's lovers on the run—anarchic, beautiful, experimental." },
+  { title: "The Silence", year: 1963, tags: ["drama", "mystery", "existential", "philosophical", "dark"], blurb: "Bergman's Swedish sisters in a foreign city—repression and desire." },
+  { title: "Through a Glass Darkly", year: 1961, tags: ["drama", "thriller", "existential", "philosophical", "chamber-piece"], blurb: "Bergman's island chamber piece—mental illness and faith crisis." },
+  { title: "Winter Light", year: 1963, tags: ["drama", "mystery", "existential", "philosophical", "theological"], blurb: "Bergman's spiritual crisis—a pastor's doubt on a winter day." },
+  { title: "Kwaidan", year: 1964, tags: ["mystery", "drama", "fantasy"], blurb: "A Japanese ghost anthology—stunning color and supernatural tales." },
+  { title: "An Actor's Revenge", year: 1963, tags: ["thriller", "drama"], blurb: "A Japanese Kabuki actor seeks revenge—stylized and sensual." },
+  { title: "Ugetsu", year: 1953, tags: ["drama", "fantasy", "classic"], blurb: "A Japanese ghost tale—war, desire, and supernatural tragedy." },
+  { title: "Sansho the Bailiff", year: 1954, tags: ["drama", "classic"], blurb: "A Japanese medieval epic—slavery, sacrifice, and redemption." },
+  { title: "Floating Clouds", year: 1955, tags: ["drama", "romance"], blurb: "A Japanese post-war romance—regret and impossible love." },
+  { title: "Closely Watched Trains", year: 1966, tags: ["comedy", "drama", "classic"], blurb: "A Czech WWII comedy—charming, tragic, and beautifully human." },
+  { title: "Daisies", year: 1966, tags: ["comedy", "drama"], blurb: "A Czech avant-garde chaos—anarchist girls and societal rebellion." },
+  { title: "The Shop on Main Street", year: 1965, tags: ["drama", "mystery"], blurb: "A Czech-Slovak WWII tragedy—a carpenter and his Jewish neighbor." },
+  { title: "Divorce Italian Style", year: 1961, tags: ["comedy", "drama"], blurb: "An Italian dark comedy—Sicilian honor and murder schemes." },
+];
+
+let qIndex = 0;
+let scores = {};
+let lastWatch = "";
+let wantSimilar = null;
+let movieGenreMap = {};
+
+// Build a map of each movie's genres
+MOVIES.forEach(m => {
+  movieGenreMap[m.title.toLowerCase()] = m.tags;
+});
+
+function findMovieGenres(searchTerm) {
+  const clean = (s) => s.toLowerCase().trim().replace(/^(the|a|an)\s+/, '');
+  const search = clean(searchTerm);
+
+  // Exact match
+  if (movieGenreMap[searchTerm.toLowerCase()]) return movieGenreMap[searchTerm.toLowerCase()];
+
+  // Match after removing articles
+  const directMatch = Object.entries(movieGenreMap).find(([title]) => clean(title) === search);
+  if (directMatch) return directMatch[1];
+
+  // Partial match (contains)
+  const partialMatch = Object.entries(movieGenreMap).find(([title]) => search.length > 2 && title.includes(search));
+  if (partialMatch) return partialMatch[1];
+
+  return [];
+}
+
+function skipQuestion() {
+  qIndex++;
+  if (qIndex < QUESTIONS.length) renderQuestion();
+  else renderQuizResult();
+}
+
+function renderQuestion() {
+  // Skip conditional questions if condition not met
+  while (qIndex < QUESTIONS.length) {
+    const q = QUESTIONS[qIndex];
+    if (q.conditional && !lastWatch) {
+      qIndex++;
+    } else {
+      break;
+    }
+  }
+
+  if (qIndex >= QUESTIONS.length) {
+    renderQuizResult();
+    return;
+  }
+
+  const q = QUESTIONS[qIndex];
+  const pct = Math.round(((qIndex + 1) / QUESTIONS.length) * 100);
+  const card = document.getElementById('quizCard');
+
+  if (q.type === "text") {
+    card.innerHTML = `
+      <div class="q-label">${q.label} · Question ${qIndex + 1} of ${QUESTIONS.length}</div>
+      <div class="q-text">${q.text}</div>
+      <input type="text" id="textInput" placeholder="e.g., Parasite, Blade Runner..." style="width:100%; padding:12px; border:1px solid var(--border); background:rgba(255,255,255,0.02); color:var(--text); font-size:15px; font-family:inherit; margin-bottom:12px;">
+      <div style="display:flex; gap:8px;">
+        <button class="btn" id="submitText" style="flex:1;">Continue</button>
+        <button class="btn secondary" id="skipText" style="flex:1;">Skip</button>
+      </div>
+      <div class="progress"><div class="progress-bar" style="width:${pct}%"></div></div>
+    `;
+    document.getElementById('submitText').addEventListener('click', () => {
+      lastWatch = document.getElementById('textInput').value.trim();
+      qIndex++;
+      renderQuestion();
+    });
+    document.getElementById('skipText').addEventListener('click', skipQuestion);
+  } else if (q.type === "similar") {
+    card.innerHTML = `
+      <div class="q-label">${q.label} · Question ${qIndex + 1} of ${QUESTIONS.length}</div>
+      <div class="q-text">${q.text}</div>
+      <div class="options">
+        <button class="option" data-similar="yes">Yes, something similar</button>
+        <button class="option" data-similar="no">No, something different</button>
+      </div>
+      <div class="progress"><div class="progress-bar" style="width:${pct}%"></div></div>
+    `;
+    card.querySelectorAll('.option').forEach(btn => {
+      btn.addEventListener('click', () => {
+        wantSimilar = btn.dataset.similar === "yes";
+        // If similar, boost the genres from their last watch
+        if (wantSimilar && lastWatch) {
+          const matchedGenres = findMovieGenres(lastWatch);
+          matchedGenres.forEach(tag => scores[tag] = (scores[tag] || 0) + 3);
+        }
+        qIndex++;
+        renderQuestion();
+      });
+    });
+  } else {
+    card.innerHTML = `
+      <div class="q-label">${q.label} · Question ${qIndex + 1} of ${QUESTIONS.length}</div>
+      <div class="q-text">${q.text}</div>
+      <div class="options">
+        ${q.options.map((o, i) => `<button class="option" data-i="${i}">${o.t}</button>`).join('')}
+      </div>
+      <div class="progress"><div class="progress-bar" style="width:${pct}%"></div></div>
+    `;
+    card.querySelectorAll('.option').forEach(btn => {
+      btn.addEventListener('click', () => {
+        q.options[+btn.dataset.i].tags.forEach(tag => scores[tag] = (scores[tag] || 0) + 1);
+        qIndex++;
+        if (qIndex < QUESTIONS.length) renderQuestion();
+        else renderQuizResult();
+      });
+    });
+  }
+}
+
+function pickFromScores(excludeTitle = "") {
+  // score each movie by how many of its tags the user favored
+  let best = -1, ranked = MOVIES.map(m => {
+    const s = m.tags.reduce((sum, t) => sum + (scores[t] || 0), 0);
+    best = Math.max(best, s);
+    return { m, s };
+  });
+  // keep the top scorers, break ties randomly so re-takes feel fresh
+  let top = ranked.filter(r => r.s === best).map(r => r.m);
+
+  // exclude the movie they just watched if provided
+  if (excludeTitle) {
+    const excludeLower = excludeTitle.toLowerCase();
+    top = top.filter(m => m.title.toLowerCase() !== excludeLower);
+  }
+
+  const pool = top.length ? top : MOVIES.filter(m =>
+    !excludeTitle || m.title.toLowerCase() !== excludeTitle.toLowerCase()
+  );
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
+function renderQuizResult() {
+  const pick = pickFromScores(wantSimilar && lastWatch ? lastWatch : "");
+  document.getElementById('quizCard').innerHTML = `
+    <div class="result">
+      <div class="badge">Your match <span class="spin">🍿</span></div>
+      <div class="pick">${pick.title}</div>
+      <div class="meta">${pick.year}</div>
+      <div class="blurb">${pick.blurb}</div>
+      <button class="btn secondary" id="retake">↻ Retake the quiz</button>
+    </div>
+  `;
+  document.getElementById('retake').addEventListener('click', () => {
+    qIndex = 0;
+    scores = {};
+    lastWatch = "";
+    wantSimilar = null;
+    renderQuestion();
+  });
+}
+
+renderQuestion();
+
+/* ---------- My own list ---------- */
+document.getElementById('spinBtn').addEventListener('click', () => {
+  const raw = document.getElementById('movieInput').value;
+  const movies = raw.split(/[\n,]+/).map(s => s.trim()).filter(Boolean);
+  const out = document.getElementById('listResult');
+  if (movies.length < 2) {
+    out.innerHTML = `<p class="hint" style="color:var(--accent)">Add at least 2 movies to pick from.</p>`;
+    return;
+  }
+  // quick shuffle animation, then land on one
+  let ticks = 0;
+  const total = 14;
+  const interval = setInterval(() => {
+    const flash = movies[Math.floor(Math.random() * movies.length)];
+    out.innerHTML = `<div class="result"><div class="pick" style="opacity:.5">${flash}</div></div>`;
+    if (++ticks >= total) {
+      clearInterval(interval);
+      const pick = movies[Math.floor(Math.random() * movies.length)];
+      out.innerHTML = `
+        <div class="result">
+          <div class="badge">Tonight you're watching <span class="spin">🎬</span></div>
+          <div class="pick">${pick}</div>
+          <div class="meta">Chosen from ${movies.length} options</div>
+        </div>`;
+    }
+  }, 70);
+});
+</script>
+</body>
+</html>
