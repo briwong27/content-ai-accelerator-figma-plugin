@@ -4,5 +4,6 @@
     "api/analyze-plugin.js": {
       "maxDuration": 60
     }
-  }
+  },
+  "outputDirectory": "."
 }
