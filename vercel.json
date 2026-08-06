@@ -1,9 +1,9 @@
 {
   "version": 2,
+  "outputDirectory": "public",
   "functions": {
     "api/analyze-plugin.js": {
       "maxDuration": 60
     }
-  },
-  "public": true
+  }
 }
