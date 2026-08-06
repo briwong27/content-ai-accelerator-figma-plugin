@@ -3,7 +3,7 @@
 // Configure your API endpoint here
 // Local development: http://localhost:3000/api/analyze-plugin
 // Vercel deployment: https://[your-project-name].vercel.app/api/analyze-plugin
-const API_ENDPOINT = 'http://localhost:3000/api/analyze-plugin';
+const API_ENDPOINT = 'https://content-ai-accelerator-figma-plugin.vercel.app/api/analyze-plugin';
 
 // ============================================================================
 // SHARED TYPES AND HELPERS (inlined from shared-types.ts)
