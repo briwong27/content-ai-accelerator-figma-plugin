@@ -1,0 +1,24 @@
+node_modules/
+*.log
+.DS_Store
+.env
+.env.local
+Enter
+Enter.pub
+
+# Documentation (development/testing only)
+CANONICAL_EXAMPLES.md
+DOCUMENTATION_INDEX.md
+EVALUATION_SCORECARD_GUIDE.md
+HOW_TO_TEST.md
+IMPLEMENTATION_PLAN.md
+IMPLEMENTATION_PROGRESS.md
+ISOLATION_ASSESSMENT.md
+PHASE_*.md
+README_TESTING.md
+SYSTEM_PROMPTS_DOCUMENTED.md
+SYSTEM_PROMPT_INVENTORY.md
+TESTING_CHECKLIST.md
+TEST_*.md
+VALIDATION_SUMMARY.md
+Figma_Plugin_Evaluation_Scorecard.csv

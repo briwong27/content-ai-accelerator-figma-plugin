@@ -1,5 +1,9 @@
 "use strict";
 /// <reference path="./node_modules/@figma/plugin-typings/index.d.ts" />
+// Configure your API endpoint here
+// Local development: http://localhost:3000/api/analyze-plugin
+// Vercel deployment: https://[your-project-name].vercel.app/api/analyze-plugin
+const API_ENDPOINT = 'http://localhost:3000/api/analyze-plugin';
 function getLayerName(node) {
     if ('name' in node) {
         return node.name || 'Unnamed';
@@ -880,8 +884,8 @@ figma.ui.onmessage = async (msg) => {
             const texts = nodes.map(n => n.characters);
             try {
                 console.log('Starting report analysis with', texts.length, 'text nodes');
-                console.log('Sending to http://localhost:3000/api/analyze-plugin');
-                const res = await fetch('http://localhost:3000/api/analyze-plugin', {
+                console.log('Sending to', API_ENDPOINT);
+                const res = await fetch(API_ENDPOINT, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({

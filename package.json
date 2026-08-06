@@ -3,7 +3,9 @@
   "version": "1.0.0",
   "scripts": {
     "build": "tsc",
-    "watch": "tsc --watch"
+    "watch": "tsc --watch",
+    "dev": "node server.js",
+    "deploy": "vercel --prod"
   },
   "devDependencies": {
     "@figma/plugin-typings": "^1.90.0",

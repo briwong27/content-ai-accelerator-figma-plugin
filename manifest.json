@@ -6,7 +6,7 @@
   "ui": "ui.html",
   "editorType": ["figma"],
   "networkAccess": {
-    "allowedDomains": ["https://api.mymemory.translated.net", "https://api.anthropic.com"],
+    "allowedDomains": ["https://api.mymemory.translated.net", "https://api.anthropic.com", "https://*.vercel.app"],
     "devAllowedDomains": ["http://localhost:3000"]
   }
 }
