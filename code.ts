@@ -627,8 +627,8 @@ function collectTextNodesInFrames(node: BaseNode): TextNode[] {
 
 function getScopedNodes(scope: Scope): TextNode[] {
   if (scope === 'selection') {
-    // Selection: count selected text layers only
-    return figma.currentPage.selection.flatMap(collectTextNodes);
+    // Selection: only directly selected TEXT layers, not frame contents
+    return figma.currentPage.selection.filter(node => node.type === 'TEXT') as TextNode[];
   }
   if (scope === 'page') {
     // Current Frame: if a frame is selected, count that frame; otherwise return empty to trigger error
