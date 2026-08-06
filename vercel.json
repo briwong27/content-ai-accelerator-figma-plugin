@@ -4,20 +4,5 @@
     "api/analyze-plugin.js": {
       "maxDuration": 60
     }
-  },
-  "outputDirectory": ".",
-  "rewrites": [
-    {
-      "source": "/manifest.json",
-      "destination": "/manifest.json"
-    },
-    {
-      "source": "/code.js",
-      "destination": "/code.js"
-    },
-    {
-      "source": "/ui.html",
-      "destination": "/ui.html"
-    }
-  ]
+  }
 }
