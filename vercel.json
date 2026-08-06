@@ -1,8 +1,16 @@
 {
   "version": 2,
-  "functions": {
-    "api/analyze-plugin.js": {
-      "maxDuration": 60
+  "builds": [
+    {
+      "src": "public/**",
+      "use": "@vercel/static"
+    },
+    {
+      "src": "api/analyze-plugin.js",
+      "use": "@vercel/node",
+      "config": {
+        "maxDuration": 60
+      }
     }
-  }
+  ]
 }

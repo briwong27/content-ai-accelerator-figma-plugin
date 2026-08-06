@@ -1,0 +1,1873 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Content Design Toolkit</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: 13px;
+      color: #1a1a1a;
+      background: #f9f9f8;
+      line-height: 1.6;
+    }
+
+    /* --- Tabs --- */
+    .tab-bar {
+      padding: 12px 16px;
+      border-bottom: 1px solid #e8e8e8;
+      background: #f9f9f8;
+    }
+
+    #tabSelect {
+      width: 100%;
+      padding: 8px 10px;
+      border: 1px solid #d8d8d8;
+      border-radius: 6px;
+      font-size: 13px;
+      color: #1a1a1a;
+      background: #fff;
+      cursor: pointer;
+      font-family: inherit;
+      font-weight: 500;
+    }
+
+    #tabSelect:focus {
+      outline: none;
+      border-color: #888;
+    }
+
+    .tab-panel {
+      display: none;
+      padding: 16px;
+      overflow-y: auto;
+      height: calc(100vh - 41px);
+    }
+
+    .tab-panel.active { display: block; }
+
+    /* --- Shared --- */
+    .section { margin-bottom: 16px; }
+
+    .group-label {
+      display: block;
+      font-size: 11px;
+      font-weight: 500;
+      color: #999;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 8px;
+    }
+
+    .radio-group {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .mode-help {
+      margin-top: 8px;
+      font-size: 11px;
+      line-height: 1.5;
+      color: #888;
+    }
+
+    .radio-group label {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      cursor: pointer;
+      padding: 5px 10px;
+      border: 1px solid #d8d8d8;
+      border-radius: 6px;
+      font-size: 12px;
+      color: #444;
+      background: #fff;
+      transition: border-color 0.15s, background 0.15s;
+    }
+
+    .radio-group input[type="radio"] { accent-color: #1a1a1a; }
+
+    .radio-group label:has(input:checked) {
+      border-color: #1a1a1a;
+      background: #fff;
+      color: #1a1a1a;
+      font-weight: 500;
+    }
+
+    select {
+      width: 100%;
+      padding: 8px 10px;
+      border: 1px solid #d8d8d8;
+      border-radius: 6px;
+      font-size: 13px;
+      color: #1a1a1a;
+      background: #fff;
+      cursor: pointer;
+      font-family: inherit;
+    }
+
+    select:focus { outline: none; border-color: #888; }
+
+    .text-input, .text-area {
+      width: 100%;
+      padding: 8px 10px;
+      border: 1px solid #d8d8d8;
+      border-radius: 6px;
+      font-size: 13px;
+      color: #1a1a1a;
+      background: #fff;
+      font-family: inherit;
+    }
+
+    .text-area {
+      resize: vertical;
+      line-height: 1.5;
+      font-size: 12px;
+    }
+
+    .text-input:focus, .text-area:focus { outline: none; border-color: #888; }
+
+    .checkbox-group {
+      display: flex;
+      gap: 14px;
+    }
+
+    .checkbox-group label {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      cursor: pointer;
+      font-size: 12px;
+      color: #444;
+    }
+
+    .checkbox-group input[type="checkbox"] { accent-color: #1a1a1a; }
+
+    .access-layer-item {
+      background: #fff;
+      border: 1px solid #e8e8e8;
+      border-radius: 6px;
+      padding: 10px;
+      margin-bottom: 10px;
+    }
+
+    .access-layer-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid #f0f0f0;
+      font-size: 12px;
+      font-weight: 500;
+      color: #1a1a1a;
+    }
+
+    .access-layer-icon {
+      width: 12px;
+      height: 12px;
+      background: #1a1a1a;
+      border-radius: 2px;
+      flex-shrink: 0;
+    }
+
+    .access-layer-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    .access-layer-badge {
+      background: #e8f5e9;
+      color: #2e7d5e;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-size: 10px;
+      font-weight: 500;
+    }
+
+    .access-field-group {
+      margin-bottom: 8px;
+    }
+
+    .access-field-label {
+      display: block;
+      font-size: 11px;
+      color: #666;
+      margin-bottom: 3px;
+      font-weight: 500;
+    }
+
+    .access-field-input {
+      width: 100%;
+      padding: 6px 8px;
+      border: 1px solid #d8d8d8;
+      border-radius: 4px;
+      font-size: 12px;
+      font-family: inherit;
+    }
+
+    .access-field-input:focus { outline: none; border-color: #888; background: #fff; }
+    .access-field-input.has-value { border-color: #2e7d5e; background: #f1f8f6; }
+
+    .hidden { display: none !important; }
+
+    /* --- Buttons --- */
+    .button-row {
+      display: flex;
+      gap: 8px;
+      margin-top: 20px;
+    }
+
+    button {
+      flex: 1;
+      padding: 9px 12px;
+      border: none;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      font-family: inherit;
+      transition: opacity 0.15s;
+    }
+
+    button:hover { opacity: 0.8; }
+    button:disabled { opacity: 0.35; cursor: not-allowed; }
+
+    #applyBtn   { background: #1a1a1a; color: #fff; }
+    #undoBtn    { background: #ebebea; color: #444; }
+    #analyzeBtn { background: #1a1a1a; color: #fff; width: 100%; margin-top: 16px; flex: none; }
+
+    /* --- Report results --- */
+    #reportStatus {
+      font-size: 12px;
+      color: #999;
+      margin-top: 12px;
+    }
+
+    .error-banner {
+      font-size: 12px;
+      color: #b03a2e;
+      margin-bottom: 12px;
+      background: #fdf2f2;
+      border: 1px solid #f5c6c6;
+      border-radius: 6px;
+      padding: 8px 10px;
+      line-height: 1.5;
+    }
+
+    #reportResults { margin-top: 16px; }
+
+    .string-block {
+      padding: 14px 0;
+      border-bottom: 1px solid #f0f0f0;
+    }
+
+    .string-block:last-child { border-bottom: none; padding-bottom: 0; }
+
+    .string-text {
+      font-weight: 500;
+      font-size: 13px;
+      margin-bottom: 10px;
+      color: #1a1a1a;
+      line-height: 1.4;
+    }
+
+    .field-row {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 4px;
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    .field-label {
+      color: #999;
+      min-width: 100px;
+      flex-shrink: 0;
+    }
+
+    .field-value { color: #1a1a1a; }
+
+    .grade-a { color: #2e7d5e; font-weight: 500; }
+    .grade-b { color: #b07d1f; font-weight: 500; }
+    .grade-c { color: #b03a2e; font-weight: 500; }
+
+    .summary-block {
+      margin-top: 16px;
+      padding: 12px;
+      background: #fff;
+      border-radius: 6px;
+      border: 1px solid #e8e8e8;
+    }
+
+    .summary-title {
+      font-size: 10px;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #999;
+      margin-bottom: 10px;
+    }
+
+    .summary-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      color: #444;
+      padding: 4px 0;
+      border-bottom: 1px solid #f5f5f5;
+    }
+
+    .summary-row:last-of-type { border-bottom: none; }
+
+    .issues-list {
+      margin-top: 10px;
+      list-style: none;
+    }
+
+    .issues-list li {
+      font-size: 12px;
+      color: #555;
+      margin-bottom: 4px;
+      padding-left: 10px;
+      position: relative;
+      line-height: 1.4;
+    }
+
+    .issues-list li::before {
+      content: '–';
+      position: absolute;
+      left: 0;
+      color: #ccc;
+    }
+
+    /* --- Expanded report view --- */
+    #reportView {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+
+    .report-view-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px;
+      border-bottom: 1px solid #e8e8e8;
+      background: #f9f9f8;
+      flex-shrink: 0;
+    }
+
+    .report-view-title {
+      font-size: 13px;
+      font-weight: 500;
+      color: #1a1a1a;
+    }
+
+    .close-btn {
+      flex: none;
+      padding: 5px 10px;
+      background: #ebebea;
+      color: #444;
+      border: none;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 500;
+      cursor: pointer;
+      font-family: inherit;
+    }
+
+    .close-btn:hover { opacity: 0.8; }
+
+    .report-view-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- EXPANDED REPORT VIEW -->
+  <div id="reportView" class="hidden">
+    <div class="report-view-header">
+      <span class="report-view-title">Review</span>
+      <button class="close-btn" onclick="closeReportView()">✕ Close</button>
+    </div>
+    <div id="reportViewContent" class="report-view-body"></div>
+  </div>
+
+  <div id="mainView">
+  <div class="tab-bar">
+    <select id="tabSelect" onchange="switchTab(this.value)">
+      <option value="localize">Localize</option>
+      <option value="replace">Replace</option>
+      <option value="terms">Terms</option>
+      <option value="counter">Counter</option>
+      <option value="accessibility">Accessibility</option>
+      <option value="report">Review</option>
+    </select>
+  </div>
+
+  <!-- LOCALIZE TAB -->
+  <div id="tab-localize" class="tab-panel active">
+    <div id="localizeError" class="error-banner hidden">Unfortunately, we can't complete this task right now. Try again later.</div>
+    <div class="section">
+      <label class="group-label">Scope</label>
+      <div class="radio-group">
+        <label><input type="radio" name="scope" value="selection" checked /> Selection</label>
+        <label><input type="radio" name="scope" value="page" /> Current Frame</label>
+        <label><input type="radio" name="scope" value="all" /> All Frames</label>
+      </div>
+    </div>
+
+    <div class="section">
+      <label class="group-label">Mode</label>
+      <div class="radio-group">
+        <label><input type="radio" name="mode" value="translate" checked /> Translate</label>
+        <label><input type="radio" name="mode" value="stress" /> Stress Test</label>
+      </div>
+      <p class="mode-help" id="modeHelp">Replaces text with an accurate translation in the chosen language. Use it to see how your design reads with real localized copy.</p>
+    </div>
+
+    <div class="section" id="translateSection">
+      <label class="group-label">Language</label>
+      <select id="translateLang">
+        <option value="en">English (restore original)</option>
+        <option value="es">Spanish</option>
+        <option value="fr">French</option>
+        <option value="de">German</option>
+        <option value="ja">Japanese</option>
+        <option value="ar">Arabic</option>
+        <option value="zh">Chinese (Simplified)</option>
+        <option value="zh-TW">Chinese (Traditional)</option>
+      </select>
+    </div>
+
+    <div class="section hidden" id="stressSection">
+      <label class="group-label">Expansion Language</label>
+      <select id="stressLang">
+        <option value="de">German (~35% longer)</option>
+        <option value="fi">Finnish (~50% longer)</option>
+        <option value="ar">Arabic (translate + diacritics)</option>
+        <option value="zh">Chinese Simplified (translate + expand)</option>
+        <option value="zh-TW">Chinese Traditional (translate + expand)</option>
+        <option value="ja">Japanese (translate + expand)</option>
+      </select>
+    </div>
+
+    <div class="button-row">
+      <button id="applyBtn">Preview</button>
+      <button id="undoBtn">Undo</button>
+    </div>
+
+    <p class="mode-help" id="localizeStatus"></p>
+
+    <!-- Localization Preview Panel -->
+    <div id="locPreview" style="display: none; margin-top: 16px;">
+      <div class="summary-block">
+        <div class="summary-title">🔍 Preview: <span id="locCount">0</span> layers</div>
+
+        <div id="locPreviewList" style="max-height: 300px; overflow-y: auto; margin: 12px 0;">
+          <!-- Localization items will be inserted here -->
+        </div>
+
+        <div style="display: flex; gap: 6px; margin-top: 12px; flex-wrap: wrap;">
+          <button id="locApplySelected" style="flex: 1; min-width: 120px;">Apply Selected</button>
+          <button id="locApplyAll" style="flex: 1; min-width: 100px;">Apply All</button>
+          <button id="locCancel" style="flex: 1; min-width: 80px; background: #ebebea; color: #444;">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FIND & REPLACE TAB -->
+  <div id="tab-replace" class="tab-panel">
+    <div id="replaceError" class="error-banner hidden">Unfortunately, we can't complete this task right now. Try again later.</div>
+    <div class="section">
+      <label class="group-label">Scope</label>
+      <div class="radio-group">
+        <label><input type="radio" name="frScope" value="selection" checked /> Selection</label>
+        <label><input type="radio" name="frScope" value="page" /> Current Frame</label>
+        <label><input type="radio" name="frScope" value="all" /> All Frames</label>
+      </div>
+    </div>
+
+    <div class="section">
+      <label class="group-label">Find</label>
+      <input type="text" id="findInput" class="text-input" placeholder="Text to find" />
+    </div>
+
+    <div class="section">
+      <label class="group-label">Replace with</label>
+      <input type="text" id="replaceInput" class="text-input" placeholder="Replacement text" />
+    </div>
+
+    <div class="section">
+      <div class="checkbox-group">
+        <label><input type="checkbox" id="matchCase" /> Match case</label>
+        <label><input type="checkbox" id="wholeWord" /> Whole word</label>
+      </div>
+    </div>
+
+    <div class="button-row">
+      <button id="findBtn">Find & Preview</button>
+      <button id="replaceBtn" style="display: none;">Apply Changes</button>
+    </div>
+
+    <p class="mode-help" id="frStatus"></p>
+
+    <!-- Preview Panel -->
+    <div id="frPreview" style="display: none; margin-top: 16px;">
+      <div class="summary-block">
+        <div class="summary-title">🔍 Preview: <span id="frMatchCount">0</span> matches found</div>
+
+        <div id="frMatchesList" style="max-height: 300px; overflow-y: auto; margin: 12px 0;">
+          <!-- Match items will be inserted here -->
+        </div>
+
+        <div style="display: flex; gap: 6px; margin-top: 12px; flex-wrap: wrap;">
+          <button id="frApplySelected" style="flex: 1; min-width: 120px;">Apply Selected</button>
+          <button id="frApplyAll" style="flex: 1; min-width: 100px;">Apply All</button>
+          <button id="frCancel" style="flex: 1; min-width: 80px; background: #ebebea; color: #444;">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TERMINOLOGY TAB -->
+  <div id="tab-terms" class="tab-panel">
+    <div id="termsError" class="error-banner hidden">Unfortunately, we can't complete this task right now. Try again later.</div>
+    <p class="mode-help" style="margin-top:0;margin-bottom:16px">Enforce preferred wording across your designs. Edit the rules below — one per line as <b>find = replace</b>. <b>Check</b> lists every match without changing anything; <b>Fix all</b> rewrites them in place (undoable). Matching ignores case and only catches whole words. Your rules save automatically.</p>
+
+    <div class="section">
+      <label class="group-label">Scope</label>
+      <div class="radio-group">
+        <label><input type="radio" name="termScope" value="selection" checked /> Selection</label>
+        <label><input type="radio" name="termScope" value="page" /> Current Frame</label>
+        <label><input type="radio" name="termScope" value="all" /> All Frames</label>
+      </div>
+    </div>
+
+    <div class="section">
+      <label class="group-label">Rules — one per line: find = replace</label>
+      <textarea id="termRules" class="text-area" rows="7">click = select
+tap = select
+utilize = use
+in order to = to
+e-mail = email
+dropdown = drop-down</textarea>
+    </div>
+
+    <div class="button-row">
+      <button id="termCheckBtn">Check & Preview</button>
+      <button id="termFixBtn" style="display: none;">Apply Changes</button>
+    </div>
+
+    <p class="mode-help" id="termStatus"></p>
+    <div id="termResults"></div>
+
+    <!-- Preview Panel -->
+    <div id="termPreview" style="display: none; margin-top: 16px;">
+      <div class="summary-block">
+        <div class="summary-title">🔍 Preview: <span id="termViolationCount">0</span> violations found</div>
+
+        <div id="termViolationsList" style="max-height: 300px; overflow-y: auto; margin: 12px 0;">
+          <!-- Violation items will be inserted here -->
+        </div>
+
+        <div style="display: flex; gap: 6px; margin-top: 12px; flex-wrap: wrap;">
+          <button id="termApplySelected" style="flex: 1; min-width: 120px;">Fix Selected</button>
+          <button id="termApplyAll" style="flex: 1; min-width: 100px;">Fix All</button>
+          <button id="termCancel" style="flex: 1; min-width: 80px; background: #ebebea; color: #444;">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- COUNTER TAB -->
+  <div id="tab-counter" class="tab-panel">
+    <div id="counterError" class="error-banner hidden">Unfortunately, we can't complete this task right now. Try again later.</div>
+    <p class="mode-help" style="margin-top:0;margin-bottom:16px">Count the total number of characters and words in your text layers. This helps you understand content length and plan for localization across different languages.</p>
+
+    <div class="section">
+      <label class="group-label">Scope</label>
+      <div class="radio-group">
+        <label><input type="radio" name="counterScope" value="selection" checked /> Selection</label>
+        <label><input type="radio" name="counterScope" value="page" /> Current Frame</label>
+        <label><input type="radio" name="counterScope" value="all" /> All Frames</label>
+      </div>
+    </div>
+
+    <div class="section">
+      <label class="group-label">Options</label>
+      <div style="display: flex; gap: 8px; align-items: center;">
+        <input type="number" id="counterLimit" placeholder="Char limit" min="0" style="flex: 1; padding: 8px; border: 1px solid #d8d8d8; border-radius: 6px; font-size: 12px;">
+        <label style="display: flex; align-items: center; gap: 4px; margin: 0; padding: 0; font-size: 12px; cursor: pointer;">
+          <input type="checkbox" id="counterHighlightOver">
+          Highlight over
+        </label>
+      </div>
+    </div>
+
+    <div class="button-row">
+      <button id="counterBtn" onclick="runCounter()">Count</button>
+      <button id="counterResetBtn" onclick="resetCounter()" style="flex: 1; background: #ebebea; color: #444;">Reset</button>
+    </div>
+
+    <div id="counterStatus"></div>
+    <div id="counterResults"></div>
+  </div>
+
+  <!-- ACCESSIBILITY TAB -->
+  <div id="tab-accessibility" class="tab-panel">
+    <div id="accessibilityError" class="error-banner hidden">Unfortunately, we can't complete this task right now. Try again later.</div>
+    <p class="mode-help" style="margin-top:0;margin-bottom:16px">Add descriptive labels and hints to elements for screen readers and assistive technology. Labels are stored in Figma layer metadata and help ensure your designs are accessible to all users.</p>
+
+    <div class="section">
+      <label class="group-label">Scope</label>
+      <div class="radio-group">
+        <label><input type="radio" name="accessScope" value="selection" checked /> Selection</label>
+        <label><input type="radio" name="accessScope" value="page" /> Current Frame</label>
+        <label><input type="radio" name="accessScope" value="all" /> All Frames</label>
+      </div>
+    </div>
+
+    <button id="loadElementsBtn" onclick="loadAccessibilityElements()">Load elements</button>
+
+    <div id="accessibilityStatus"></div>
+    <div id="accessibilityElements"></div>
+
+    <div class="button-row" id="accessibilityActions" style="display: none;">
+      <button id="saveAccessibilityBtn" onclick="saveAccessibilityLabels()">Save labels</button>
+      <button id="exportAccessibilityBtn" onclick="exportAccessibilityLabels()">Export CSV</button>
+    </div>
+  </div>
+
+  <!-- REPORT TAB -->
+  <div id="tab-report" class="tab-panel">
+    <div id="reportError" class="error-banner hidden" data-default="Unfortunately, we can't complete this task right now. Try again later.">Unfortunately, we can't complete this task right now. Try again later.</div>
+
+    <div id="apiKeySection" class="section">
+      <label class="group-label">Anthropic API Key</label>
+      <div id="apiKeyForm" style="display: none; gap: 8px; margin-bottom: 8px; flex-direction: row;">
+        <input type="password" id="apiKeyInput" class="text-input" placeholder="Paste your API key" style="flex: 1;" />
+        <button id="saveApiKeyBtn" onclick="saveApiKey()" style="flex: 0.5; background: #1a1a1a; color: #fff;">Save</button>
+      </div>
+      <div id="apiKeyStatus" style="font-size: 11px; color: #888;"></div>
+    </div>
+
+    <p class="mode-help" style="margin-top:0;margin-bottom:16px">Review your UI text against content design best practices and accessibility guidelines. Get grades for style guide compliance and accessibility, plus specific recommendations for improvement.</p>
+
+    <div class="section">
+      <label class="group-label">Style Guide</label>
+      <select id="styleguideSelect" onchange="handleStyleguideChange()">
+        <option value="shopify">Shopify Polaris</option>
+        <option value="apple">Apple HIG</option>
+        <option value="material">Material Design</option>
+        <option value="custom">Custom</option>
+      </select>
+    </div>
+
+    <div class="section hidden" id="customStyleguideSection">
+      <label class="group-label">Custom Style Guide Rules</label>
+      <textarea id="customStyleguide" class="text-area" rows="10" placeholder="Paste your custom style guide rules here..."></textarea>
+      <div style="margin-top: 8px; display: flex; gap: 8px;">
+        <button onclick="saveCustomStyleguide()" style="flex: 1;">Save Custom Rules</button>
+        <button onclick="resetToDefault()" style="flex: 1; background: #ebebea; color: #444;">Reset to Default</button>
+      </div>
+    </div>
+
+    <div class="section">
+      <label class="group-label">Scope</label>
+      <div class="radio-group">
+        <label><input type="radio" name="reportScope" value="selection" checked /> Selection</label>
+        <label><input type="radio" name="reportScope" value="page" /> Current Frame</label>
+        <label><input type="radio" name="reportScope" value="all" /> All Frames</label>
+      </div>
+    </div>
+
+    <button id="analyzeBtn" onclick="runReport()">Analyze</button>
+
+    <div id="reportStatus"></div>
+    <div id="reportResults"></div>
+
+    <div style="padding: 12px 16px; border-top: 1px solid #e8e8e8; text-align: center; background: #f9f9f8; margin-top: auto;">
+      <a href="#" onclick="changeApiKey(); return false;" style="color: #0066cc; text-decoration: none; font-size: 12px; cursor: pointer;">Change API key</a>
+    </div>
+  </div>
+
+  </div> <!-- end mainView -->
+
+  <script>
+    const STYLEGUIDE_RULES = {
+      shopify: `Shopify Polaris rules to apply:
+1. Sentence case: Only capitalise the first word and proper nouns. Title case in UI copy is a violation.
+2. Plain language: Use everyday words. Avoid jargon or unnecessary complexity.
+3. Device-agnostic verbs: Never use "click", "tap", "swipe". Use "select", "choose", "open", "go to".
+4. Active voice: Prefer active constructions. Passive is acceptable only when the actor is unknown.
+5. Specific CTAs: Button labels must describe the action. "Click here", "Submit" on ambiguous forms are violations.
+6. Error messages: Must identify the problem and tell the user what to do next.
+7. Positive framing: Describe what the user can do, not what they can't.
+8. Contractions: Polaris encourages natural contractions (you'll, don't, it's).`,
+      apple: `Apple Human Interface Guidelines rules to apply:
+1. Clarity: Text should be clear, concise, and direct. Avoid jargon and unnecessary words.
+2. Consistent terminology: Use consistent terms throughout your interface.
+3. Action-oriented labels: Use verbs for actions. Labels should describe the result, not the action itself.
+4. Accessibility: All text must be readable and descriptive for accessibility features.
+5. Positive language: Be positive and encouraging. Avoid negative phrasing when possible.
+6. Capitalization: Use sentence case for most UI elements. Only capitalize proper nouns.`,
+      material: `Material Design rules to apply:
+1. Clarity and conciseness: Use clear, concise language. Remove unnecessary words.
+2. Descriptive labels: Labels and headings should clearly describe their function or content.
+3. Actionable language: Use verbs that describe what will happen when the user interacts with the element.
+4. Consistent voice and tone: Maintain a consistent, friendly tone throughout your interface.
+5. Proper grammar and spelling: Ensure all text is properly formatted with correct grammar and spelling.
+6. Accessibility: Text should be easy to read and understand for all users, including those using accessibility features.`
+    };
+
+    const WCAG_RULES = `WCAG 2.2 rules to apply (text-analysable only):
+1. 2.4.4 Link purpose: Link/button text must make sense out of context. "Click here" or "Read more" alone fails.
+2. 2.4.6 Headings and labels: Must be descriptive. Vague headings like "Details" or "Info" are a B issue.
+3. 3.3.1 Error identification: Error messages must clearly state what went wrong.
+4. 3.3.2 Labels or instructions: Inputs must have descriptive labels.
+5. 2.4.2 Page titled: Primary headings should describe the screen's purpose.`;
+
+    const SYSTEM_PROMPT_TEMPLATE = `You are a content design reviewer evaluating UI text from Figma frames against content standards and accessibility guidelines.
+
+For each text string provided, output a JSON object with this exact structure:
+{
+  "frames": [
+    {
+      "frame_name": "<frame name>",
+      "results": [
+        {
+          "string": "<exact text>",
+          "Style guide grade": "A" | "B" | "C",
+          "Accessibility grade": "A" | "B" | "C",
+          "rationale": "<one sentence citing the specific rule>",
+          "Recommendation for improvement": "<one or two sentences; required for B or C; use 'None.' for A/A>"
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "total_strings": <number>,
+    "top_issues": ["<brief description>"]
+  }
+}
+
+Grade scale: A = excellent, B = good with minor issues, C = needs improvement.
+
+{STYLEGUIDE_RULES}
+
+{WCAG_RULES}
+
+Edge cases:
+- No text found: return a single result with string="[No text content]", Style guide grade="N/A", Accessibility grade="C", rationale noting missing alt text.
+- Non-English text: WCAG checks only; set Style guide grade="N/A".
+- Ambiguous element role: use the most conservative accessibility interpretation; note ambiguity in rationale.
+
+Output valid JSON only. No markdown fences, no commentary, nothing outside the JSON object.`;
+
+    let currentStyleguide = 'shopify';
+    let currentCustomRules = '';
+
+    function buildSystemPrompt(styleguide, customRules) {
+      let rules = styleguide === 'custom' ? customRules : STYLEGUIDE_RULES[styleguide] || STYLEGUIDE_RULES.shopify;
+      return SYSTEM_PROMPT_TEMPLATE
+        .replace('{STYLEGUIDE_RULES}', rules)
+        .replace('{WCAG_RULES}', WCAG_RULES);
+    }
+
+    // --- Expanded report view ---
+    function openReportView(html) {
+      document.getElementById('reportViewContent').innerHTML = html;
+      document.getElementById('mainView').classList.add('hidden');
+      document.getElementById('reportView').classList.remove('hidden');
+      parent.postMessage({ pluginMessage: { type: 'resize', width: 520, height: 680 } }, '*');
+    }
+
+    function closeReportView() {
+      document.getElementById('mainView').classList.remove('hidden');
+      document.getElementById('reportView').classList.add('hidden');
+      parent.postMessage({ pluginMessage: { type: 'resize', width: 320, height: 520 } }, '*');
+    }
+
+    // --- Tab switching ---
+    function switchTab(name) {
+      document.getElementById('tabSelect').value = name;
+      document.querySelectorAll('.tab-panel').forEach(panel => {
+        panel.classList.toggle('active', panel.id === 'tab-' + name);
+      });
+    }
+
+    // --- Localize tab ---
+    const MODE_HELP = {
+      translate: 'Replaces text with an accurate translation in the chosen language. Use it to see how your design reads with real localized copy.',
+      stress: 'Deliberately makes text longer and denser to find where your layout breaks — truncation, overflow, or clipped buttons. The output is a worst-case pressure test, not readable copy.'
+    };
+
+    document.querySelectorAll('input[name="mode"]').forEach(radio => {
+      radio.addEventListener('change', () => {
+        const isStress = document.querySelector('input[name="mode"]:checked').value === 'stress';
+        document.getElementById('translateSection').classList.toggle('hidden', isStress);
+        document.getElementById('stressSection').classList.toggle('hidden', !isStress);
+        document.getElementById('modeHelp').textContent = isStress ? MODE_HELP.stress : MODE_HELP.translate;
+      });
+    });
+
+    let currentLocScope = null;
+    let currentLocMode = null;
+    let currentLocLang = null;
+
+    document.getElementById('applyBtn').addEventListener('click', () => {
+      clearError('localize');
+      const scope = document.querySelector('input[name="scope"]:checked').value;
+      const mode = document.querySelector('input[name="mode"]:checked').value;
+      const lang = mode === 'stress'
+        ? document.getElementById('stressLang').value
+        : document.getElementById('translateLang').value;
+
+      currentLocScope = scope;
+      currentLocMode = mode;
+      currentLocLang = lang;
+
+      document.getElementById('localizeStatus').textContent = 'Previewing…';
+      parent.postMessage({ pluginMessage: { type: 'apply', action: 'preview', scope, mode, lang } }, '*');
+    });
+
+    function applySelectedLocalizations() {
+      clearError('localize');
+      const selectedIds = Array.from(document.querySelectorAll('#locPreviewList input[type="checkbox"]:checked'))
+        .map(cb => cb.dataset.layerId);
+      if (selectedIds.length === 0) {
+        document.getElementById('localizeStatus').textContent = 'No layers selected.';
+        return;
+      }
+      document.getElementById('localizeStatus').textContent = 'Applying…';
+      parent.postMessage({ pluginMessage: { type: 'apply', action: 'apply-selected', scope: currentLocScope, mode: currentLocMode, lang: currentLocLang, selectedIds } }, '*');
+    }
+
+    function applyAllLocalizations() {
+      clearError('localize');
+      document.getElementById('localizeStatus').textContent = 'Applying…';
+      parent.postMessage({ pluginMessage: { type: 'apply', action: 'apply-all', scope: currentLocScope, mode: currentLocMode, lang: currentLocLang } }, '*');
+    }
+
+    function closeLocPreview() {
+      document.getElementById('locPreview').style.display = 'none';
+      document.getElementById('localizeStatus').textContent = '';
+    }
+
+    document.getElementById('locApplySelected').addEventListener('click', applySelectedLocalizations);
+    document.getElementById('locApplyAll').addEventListener('click', applyAllLocalizations);
+    document.getElementById('locCancel').addEventListener('click', closeLocPreview);
+
+    document.getElementById('undoBtn').addEventListener('click', () => {
+      clearError('localize');
+      parent.postMessage({ pluginMessage: { type: 'undo' } }, '*');
+    });
+
+    // --- Find & Replace tab ---
+    let currentFRScope = null;
+    let currentFRFind = null;
+    let currentFRReplace = null;
+    let currentFROptions = null;
+
+    function sendFindReplace(action) {
+      clearError('replace');
+      const find = document.getElementById('findInput').value;
+      if (!find) {
+        document.getElementById('frStatus').textContent = 'Enter text to find.';
+        return;
+      }
+      const scope = document.querySelector('input[name="frScope"]:checked').value;
+      const replace = document.getElementById('replaceInput').value;
+      const matchCase = document.getElementById('matchCase').checked;
+      const wholeWord = document.getElementById('wholeWord').checked;
+
+      // Store current search for later apply actions
+      currentFRScope = scope;
+      currentFRFind = find;
+      currentFRReplace = replace;
+      currentFROptions = { matchCase, wholeWord };
+
+      document.getElementById('frStatus').textContent = 'Searching…';
+      parent.postMessage({
+        pluginMessage: {
+          type: 'find-replace',
+          action,
+          scope,
+          find,
+          replace,
+          matchCase,
+          wholeWord
+        }
+      }, '*');
+    }
+
+    function applySelectedMatches() {
+      const checked = document.querySelectorAll('.fr-match-checkbox:checked');
+      const selectedIds = Array.from(checked).map(el => el.dataset.id);
+
+      document.getElementById('frStatus').textContent = `Applying to ${selectedIds.length} match(es)…`;
+      parent.postMessage({
+        pluginMessage: {
+          type: 'find-replace',
+          action: 'apply-selected',
+          scope: currentFRScope,
+          find: currentFRFind,
+          replace: currentFRReplace,
+          matchCase: currentFROptions.matchCase,
+          wholeWord: currentFROptions.wholeWord,
+          selectedIds: selectedIds
+        }
+      }, '*');
+      closeFRPreview();
+    }
+
+    function applyAllMatches() {
+      const allCount = document.querySelectorAll('.fr-match-checkbox').length;
+      document.getElementById('frStatus').textContent = `Applying to ${allCount} match(es)…`;
+      parent.postMessage({
+        pluginMessage: {
+          type: 'find-replace',
+          action: 'apply-all',
+          scope: currentFRScope,
+          find: currentFRFind,
+          replace: currentFRReplace,
+          matchCase: currentFROptions.matchCase,
+          wholeWord: currentFROptions.wholeWord
+        }
+      }, '*');
+      closeFRPreview();
+    }
+
+    function closeFRPreview() {
+      document.getElementById('frPreview').style.display = 'none';
+      document.getElementById('frMatchesList').innerHTML = '';
+    }
+
+    document.getElementById('findBtn').addEventListener('click', () => sendFindReplace('preview'));
+    document.getElementById('replaceBtn').addEventListener('click', () => sendFindReplace('replace'));
+    document.getElementById('frApplySelected').addEventListener('click', applySelectedMatches);
+    document.getElementById('frApplyAll').addEventListener('click', applyAllMatches);
+    document.getElementById('frCancel').addEventListener('click', closeFRPreview);
+
+    // --- Terminology tab ---
+    function parseRules() {
+      return document.getElementById('termRules').value
+        .split('\n')
+        .map(line => {
+          const idx = line.indexOf('=');
+          if (idx === -1) return null;
+          const find = line.slice(0, idx).trim();
+          const replace = line.slice(idx + 1).trim();
+          return find ? { find, replace } : null;
+        })
+        .filter(Boolean);
+    }
+
+    let currentTermScope = null;
+    let currentTermRules = null;
+
+    function sendTerminology(action) {
+      clearError('terms');
+      const rules = parseRules();
+      if (rules.length === 0) {
+        document.getElementById('termStatus').textContent = 'Add at least one rule (find = replace).';
+        return;
+      }
+      const scope = document.querySelector('input[name="termScope"]:checked').value;
+      document.getElementById('termResults').innerHTML = '';
+      document.getElementById('termStatus').textContent = 'Checking…';
+
+      // Store current search for later apply actions
+      currentTermScope = scope;
+      currentTermRules = rules;
+
+      parent.postMessage({ pluginMessage: { type: 'terminology', action, scope, rules } }, '*');
+    }
+
+    function applySelectedViolations() {
+      const checked = document.querySelectorAll('.term-violation-checkbox:checked');
+      const selectedIds = Array.from(checked).map(el => el.dataset.id);
+
+      document.getElementById('termStatus').textContent = `Fixing ${selectedIds.length} violation(s)…`;
+      parent.postMessage({
+        pluginMessage: {
+          type: 'terminology',
+          action: 'apply-selected',
+          scope: currentTermScope,
+          rules: currentTermRules,
+          selectedIds: selectedIds
+        }
+      }, '*');
+      closeTermPreview();
+    }
+
+    function applyAllViolations() {
+      const allCount = document.querySelectorAll('.term-violation-checkbox').length;
+      document.getElementById('termStatus').textContent = `Fixing ${allCount} violation(s)…`;
+      parent.postMessage({
+        pluginMessage: {
+          type: 'terminology',
+          action: 'apply-all',
+          scope: currentTermScope,
+          rules: currentTermRules
+        }
+      }, '*');
+      closeTermPreview();
+    }
+
+    function closeTermPreview() {
+      document.getElementById('termPreview').style.display = 'none';
+      document.getElementById('termViolationsList').innerHTML = '';
+    }
+
+    document.getElementById('termCheckBtn').addEventListener('click', () => sendTerminology('preview'));
+    document.getElementById('termFixBtn').addEventListener('click', () => sendTerminology('fix'));
+    document.getElementById('termApplySelected').addEventListener('click', applySelectedViolations);
+    document.getElementById('termApplyAll').addEventListener('click', applyAllViolations);
+    document.getElementById('termCancel').addEventListener('click', closeTermPreview);
+
+    // Persist the ruleset so custom rules survive across sessions.
+    let saveRulesTimer;
+    document.getElementById('termRules').addEventListener('input', () => {
+      clearTimeout(saveRulesTimer);
+      saveRulesTimer = setTimeout(() => {
+        const rules = document.getElementById('termRules').value;
+        parent.postMessage({ pluginMessage: { type: 'save-term-rules', rules } }, '*');
+      }, 400);
+    });
+
+    // Request any saved ruleset on startup.
+    parent.postMessage({ pluginMessage: { type: 'get-term-rules' } }, '*');
+
+    // Request saved styleguide on startup.
+    parent.postMessage({ pluginMessage: { type: 'get-styleguide' } }, '*');
+
+    function renderTermViolations(violations) {
+      const container = document.getElementById('termResults');
+      if (!violations.length) {
+        container.innerHTML = '';
+        return;
+      }
+      let html = '';
+      for (const v of violations) {
+        const snippet = v.string.length > 80 ? v.string.slice(0, 80) + '…' : v.string;
+        html += `
+          <div class="string-block">
+            <div class="string-text">"${esc(snippet)}"</div>
+            <div class="field-row">
+              <span class="field-label">Layer</span>
+              <span class="field-value">${esc(v.layer)}</span>
+            </div>
+            <div class="field-row">
+              <span class="field-label">Found</span>
+              <span class="field-value grade-c">${esc(v.term)}</span>
+              <span class="field-label" style="min-width:auto">→</span>
+              <span class="field-value grade-a">${esc(v.suggestion)}</span>
+              <span class="field-value">(${v.count})</span>
+            </div>
+          </div>`;
+      }
+      container.innerHTML = html;
+    }
+
+    // --- Counter tab ---
+    function runCounter() {
+      clearError('counter');
+      const scope = document.querySelector('input[name="counterScope"]:checked').value;
+      document.getElementById('counterStatus').textContent = 'Counting…';
+      document.getElementById('counterResults').innerHTML = '';
+      document.getElementById('counterBtn').disabled = true;
+      parent.postMessage({ pluginMessage: { type: 'counter', scope } }, '*');
+    }
+
+    function resetCounter() {
+      document.getElementById('counterStatus').textContent = '';
+      document.getElementById('counterResults').innerHTML = '';
+      clearError('counter');
+    }
+
+    // --- Accessibility tab ---
+    function loadAccessibilityElements() {
+      clearError('accessibility');
+      const scope = document.querySelector('input[name="accessScope"]:checked').value;
+      document.getElementById('accessibilityStatus').textContent = 'Loading elements…';
+      document.getElementById('accessibilityElements').innerHTML = '';
+      document.getElementById('loadElementsBtn').disabled = true;
+      document.getElementById('accessibilityActions').style.display = 'none';
+      parent.postMessage({ pluginMessage: { type: 'load-accessibility-elements', scope } }, '*');
+    }
+
+    function renderAccessibilityElements(elements) {
+      const container = document.getElementById('accessibilityElements');
+      if (elements.length === 0) {
+        container.innerHTML = '<p style="color: #999; font-size: 12px; padding: 12px 0;">No text elements found in scope.</p>';
+        document.getElementById('accessibilityStatus').textContent = '';
+        return;
+      }
+
+      let html = `<label class="group-label" style="margin-top: 12px;">Elements (${elements.length})</label>`;
+      for (const el of elements) {
+        const hasLabel = el.label || el.hint;
+        const badge = hasLabel ? '<div class="access-layer-badge">✓ Labeled</div>' : '';
+        html += `
+          <div class="access-layer-item">
+            <div class="access-layer-header">
+              <div class="access-layer-icon"></div>
+              <div class="access-layer-name" title="${el.name}">${el.name}</div>
+              ${badge}
+            </div>
+            <div class="access-field-group">
+              <label class="access-field-label">Label</label>
+              <input type="text" class="access-field-input" data-id="${el.id}" data-field="label" value="${el.label || ''}" placeholder="Short accessible name" />
+            </div>
+            <div class="access-field-group">
+              <label class="access-field-label">Hint</label>
+              <input type="text" class="access-field-input" data-id="${el.id}" data-field="hint" value="${el.hint || ''}" placeholder="Additional guidance or context" />
+            </div>
+            <div class="access-field-group">
+              <label class="access-field-label">Role</label>
+              <input type="text" class="access-field-input" data-id="${el.id}" data-field="role" value="${el.role || ''}" placeholder="e.g., button, link, heading" />
+            </div>
+            <div class="access-field-group">
+              <label class="access-field-label">Alt text</label>
+              <input type="text" class="access-field-input" data-id="${el.id}" data-field="altText" value="${el.altText || ''}" placeholder="Description for images" />
+            </div>
+          </div>
+        `;
+      }
+      container.innerHTML = html;
+      document.getElementById('accessibilityStatus').textContent = '';
+      document.getElementById('loadElementsBtn').disabled = false;
+      document.getElementById('accessibilityActions').style.display = 'flex';
+
+      document.querySelectorAll('.access-field-input').forEach(input => {
+        if (input.value) input.classList.add('has-value');
+        input.addEventListener('input', () => input.classList.toggle('has-value', input.value.length > 0));
+      });
+    }
+
+    function saveAccessibilityLabels() {
+      const labels = {};
+      document.querySelectorAll('.access-field-input').forEach(input => {
+        const id = input.dataset.id;
+        const field = input.dataset.field;
+        if (!labels[id]) labels[id] = { label: '', hint: '', role: '', altText: '' };
+        labels[id][field] = input.value;
+      });
+
+      document.getElementById('saveAccessibilityBtn').disabled = true;
+      parent.postMessage({ pluginMessage: { type: 'save-accessibility-labels', labels } }, '*');
+    }
+
+    function exportAccessibilityLabels() {
+      const rows = [['Element', 'Label', 'Hint', 'Role', 'Alt Text']];
+      document.querySelectorAll('.access-layer-item').forEach(item => {
+        const header = item.querySelector('.access-layer-name').textContent;
+        const inputs = item.querySelectorAll('.access-field-input');
+        rows.push([
+          header,
+          inputs[0].value,
+          inputs[1].value,
+          inputs[2].value,
+          inputs[3].value
+        ]);
+      });
+
+      const csv = rows.map(row => row.map(cell => `"${cell.replace(/"/g, '""')}"`).join(',')).join('\n');
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'accessibility-labels.csv';
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    // --- Report tab ---
+    function handleStyleguideChange() {
+      const selected = document.getElementById('styleguideSelect').value;
+      const customSection = document.getElementById('customStyleguideSection');
+      customSection.classList.toggle('hidden', selected !== 'custom');
+      if (selected === 'custom' && !currentCustomRules) {
+        document.getElementById('customStyleguide').value = '';
+      } else if (selected === 'custom') {
+        document.getElementById('customStyleguide').value = currentCustomRules;
+      }
+    }
+
+    function saveCustomStyleguide() {
+      const rules = document.getElementById('customStyleguide').value;
+      if (!rules.trim()) {
+        alert('Please enter custom style guide rules.');
+        return;
+      }
+      currentCustomRules = rules;
+      currentStyleguide = 'custom';
+      parent.postMessage({ pluginMessage: { type: 'save-styleguide', styleguide: 'custom', customRules: rules } }, '*');
+      alert('Custom style guide saved.');
+    }
+
+    function resetToDefault() {
+      currentStyleguide = 'shopify';
+      currentCustomRules = '';
+      document.getElementById('styleguideSelect').value = 'shopify';
+      document.getElementById('customStyleguide').value = '';
+      document.getElementById('customStyleguideSection').classList.add('hidden');
+      parent.postMessage({ pluginMessage: { type: 'save-styleguide', styleguide: 'shopify', customRules: '' } }, '*');
+      alert('Reset to default style guide.');
+    }
+
+    function runReport() {
+      const scope = document.querySelector('input[name="reportScope"]:checked').value;
+      const systemPrompt = buildSystemPrompt(currentStyleguide, currentCustomRules);
+      setReportStatus('Analyzing…');
+      clearError('report');
+      document.getElementById('reportResults').innerHTML = '';
+      document.getElementById('analyzeBtn').disabled = true;
+      parent.postMessage({ pluginMessage: { type: 'run-report', scope, systemPrompt } }, '*');
+    }
+
+    function gradeClass(g) {
+      if (!g) return '';
+      if (g === 'A') return 'grade-a';
+      if (g === 'B') return 'grade-b';
+      if (g === 'C') return 'grade-c';
+      return '';
+    }
+
+    function esc(str) {
+      return String(str || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+    }
+
+    function renderResults(data) {
+      let html = '';
+
+      const frames = data.frames || [];
+      for (const frame of frames) {
+        for (const r of (frame.results || [])) {
+          const rec = r['Recommendation for improvement'];
+          html += `
+            <div class="string-block">
+              <div class="string-text">"${esc(r.string)}"</div>
+              <div class="field-row">
+                <span class="field-label">Style guide</span>
+                <span class="field-value ${gradeClass(r['Style guide grade'])}">${esc(r['Style guide grade'] || '—')}</span>
+              </div>
+              <div class="field-row">
+                <span class="field-label">Accessibility</span>
+                <span class="field-value ${gradeClass(r['Accessibility grade'])}">${esc(r['Accessibility grade'] || '—')}</span>
+              </div>
+              <div class="field-row">
+                <span class="field-label">Rationale</span>
+                <span class="field-value">${esc(r.rationale)}</span>
+              </div>
+              ${rec && rec !== 'None.' ? `
+              <div class="field-row">
+                <span class="field-label">Recommendation</span>
+                <span class="field-value">${esc(rec)}</span>
+              </div>` : ''}
+            </div>`;
+        }
+      }
+
+      if (data.summary) {
+        const s = data.summary;
+        html += `
+          <div class="summary-block">
+            <div class="summary-title">Summary</div>
+            <div class="summary-row"><span>Strings reviewed</span><span>${s.total_strings ?? '—'}</span></div>
+            ${s.top_issues?.length ? `
+              <ul class="issues-list" style="margin-top:8px">
+                ${s.top_issues.map(i => `<li>${esc(i)}</li>`).join('')}
+              </ul>` : ''}
+          </div>`;
+      }
+
+      openReportView(html);
+    }
+
+    function setReportStatus(msg) {
+      document.getElementById('reportStatus').textContent = msg;
+    }
+
+    function showError(tab) {
+      document.getElementById(tab + 'Error').classList.remove('hidden');
+    }
+
+    function clearError(tab) {
+      const errorEl = document.getElementById(tab + 'Error');
+      errorEl.classList.add('hidden');
+      const defaultMsg = errorEl.getAttribute('data-default');
+      if (defaultMsg) {
+        errorEl.textContent = defaultMsg;
+      }
+    }
+
+    function escapeHtml(text) {
+      const map = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+      };
+      return text.replace(/[&<>"']/g, m => map[m]);
+    }
+
+    // --- API Key management ---
+    function saveApiKey() {
+      const key = document.getElementById('apiKeyInput').value.trim();
+      if (!key) {
+        document.getElementById('apiKeyStatus').textContent = 'Please enter an API key.';
+        return;
+      }
+      parent.postMessage({ pluginMessage: { type: 'save-api-key', key } }, '*');
+      document.getElementById('apiKeyStatus').textContent = 'API key saved securely.';
+      document.getElementById('apiKeyInput').value = '';
+      setTimeout(() => {
+        updateApiKeyUI(true);
+      }, 1000);
+    }
+
+    function changeApiKey() {
+      const form = document.getElementById('apiKeyForm');
+      const section = document.getElementById('apiKeySection');
+      section.style.display = 'block';
+      form.style.display = 'flex';
+      document.getElementById('apiKeyInput').focus();
+      section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    function updateApiKeyUI(isConfigured) {
+      const form = document.getElementById('apiKeyForm');
+      const section = document.getElementById('apiKeySection');
+      const statusEl = document.getElementById('apiKeyStatus');
+
+      if (isConfigured) {
+        form.style.display = 'none';
+        section.style.display = 'none';
+        statusEl.textContent = '';
+      } else {
+        form.style.display = 'flex';
+        section.style.display = 'block';
+        statusEl.textContent = '';
+      }
+    }
+
+    function loadApiKey() {
+      parent.postMessage({ pluginMessage: { type: 'get-api-key' } }, '*');
+    }
+
+    loadApiKey();
+
+    // --- Message handler from plugin code ---
+    window.onmessage = (event) => {
+      const msg = event.data.pluginMessage;
+      if (!msg) return;
+
+      if (msg.type === 'report-result') {
+        console.log('Received report-result message');
+        let raw = msg.raw.trim();
+        console.log('Raw message length:', raw.length);
+        raw = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
+        try {
+          let parsed;
+          try {
+            console.log('Attempting to parse JSON...');
+            parsed = JSON.parse(raw);
+            console.log('Successfully parsed JSON');
+          }
+          catch (e) {
+            console.log('First parse failed, trying regex match:', e);
+            const m = raw.match(/\{[\s\S]*\}/);
+            if (!m) throw new Error('No JSON object found in response');
+            console.log('Matched JSON, parsing...');
+            parsed = JSON.parse(m[0]);
+          }
+          console.log('Opening report view with parsed data');
+          setReportStatus('');
+          renderResults(parsed);
+          console.log('Report displayed successfully');
+        } catch (e) {
+          console.error('Report display failed:', e);
+          showError('report');
+          setReportStatus('');
+        }
+        document.getElementById('analyzeBtn').disabled = false;
+      } else if (msg.type === 'report-error') {
+        const errorEl = document.getElementById('reportError');
+        if (msg.error) {
+          errorEl.textContent = msg.error;
+        }
+        showError('report');
+        setReportStatus('');
+        document.getElementById('analyzeBtn').disabled = false;
+      } else if (msg.type === 'plugin-error') {
+        showError(msg.tab);
+        if (msg.tab === 'counter') {
+          document.getElementById('counterStatus').textContent = '';
+          document.getElementById('counterBtn').disabled = false;
+        } else if (msg.tab === 'accessibility') {
+          document.getElementById('accessibilityStatus').textContent = '';
+          document.getElementById('loadElementsBtn').disabled = false;
+        } else if (msg.tab === 'report') {
+          setReportStatus('');
+          document.getElementById('analyzeBtn').disabled = false;
+        } else if (msg.tab === 'replace') {
+          document.getElementById('frStatus').textContent = '';
+        } else if (msg.tab === 'terms') {
+          document.getElementById('termStatus').textContent = '';
+        }
+      } else if (msg.type === 'fr-preview-result') {
+        const status = document.getElementById('frStatus');
+        const preview = document.getElementById('frPreview');
+        const matchesList = document.getElementById('frMatchesList');
+
+        if (msg.noScope) {
+          status.textContent = msg.message || 'No text layers found in scope.';
+          preview.style.display = 'none';
+          return;
+        }
+
+        if (msg.totalMatches === 0) {
+          status.textContent = 'No matches found.';
+          preview.style.display = 'none';
+          return;
+        }
+
+        // Show preview panel
+        status.textContent = '';
+        document.getElementById('frMatchCount').textContent = msg.totalMatches;
+        matchesList.innerHTML = '';
+
+        // Render each match
+        msg.matches.forEach((match) => {
+          const matchDiv = document.createElement('div');
+          matchDiv.className = 'replace-match';
+          matchDiv.style.cssText = 'padding: 10px; margin: 8px 0; border: 1px solid #e8e8e8; border-radius: 4px; background: #fafafa;';
+
+          const checkbox = document.createElement('input');
+          checkbox.type = 'checkbox';
+          checkbox.className = 'fr-match-checkbox';
+          checkbox.dataset.id = match.layerId;
+          checkbox.checked = match.editable;
+          checkbox.disabled = !match.editable;
+
+          const checkboxLabel = document.createElement('label');
+          checkboxLabel.style.cssText = 'display: flex; align-items: flex-start; gap: 8px; margin: 0; cursor: pointer;';
+          checkboxLabel.appendChild(checkbox);
+
+          const layerInfo = document.createElement('div');
+          layerInfo.style.cssText = 'flex: 1;';
+
+          const layerName = document.createElement('div');
+          layerName.style.cssText = 'font-weight: 500; color: #1a1a1a; font-size: 12px;';
+          layerName.textContent = escapeHtml(match.layerName);
+          layerInfo.appendChild(layerName);
+
+          if (match.frameName) {
+            const frameName = document.createElement('div');
+            frameName.style.cssText = 'font-size: 11px; color: #888; margin-top: 2px;';
+            frameName.textContent = `(${escapeHtml(match.frameName)})`;
+            layerInfo.appendChild(frameName);
+          }
+
+          checkboxLabel.appendChild(layerInfo);
+
+          const textInfo = document.createElement('div');
+          textInfo.style.cssText = 'margin-top: 8px; padding-top: 8px; border-top: 1px solid #e8e8e8;';
+
+          const original = document.createElement('div');
+          original.style.cssText = 'font-size: 11px; color: #666; margin-bottom: 4px;';
+          original.innerHTML = '<strong>Original:</strong> <span style="font-style: italic;">' +
+            escapeHtml(match.original.length > 60 ? match.original.substring(0, 60) + '…' : match.original) +
+            '</span>';
+          textInfo.appendChild(original);
+
+          const proposed = document.createElement('div');
+          proposed.style.cssText = 'font-size: 11px; color: #666;';
+          proposed.innerHTML = '<strong>Proposed:</strong> <span style="font-style: italic; color: #0066cc;">' +
+            escapeHtml(match.proposed.length > 60 ? match.proposed.substring(0, 60) + '…' : match.proposed) +
+            '</span>';
+          textInfo.appendChild(proposed);
+
+          if (!match.editable && match.skipReason) {
+            const skipInfo = document.createElement('div');
+            skipInfo.style.cssText = 'font-size: 11px; color: #d9534f; margin-top: 6px; font-weight: 500;';
+            skipInfo.textContent = '⚠ ' + (match.skipReason === 'locked' ? 'Layer is locked' : 'Cannot edit: ' + escapeHtml(match.skipReason));
+            textInfo.appendChild(skipInfo);
+          }
+
+          matchDiv.appendChild(checkboxLabel);
+          matchDiv.appendChild(textInfo);
+          matchesList.appendChild(matchDiv);
+        });
+
+        preview.style.display = 'block';
+      } else if (msg.type === 'fr-result') {
+        const status = document.getElementById('frStatus');
+        if (msg.noScope) {
+          status.textContent = 'No text layers found in scope.';
+        } else if (msg.mode === 'count') {
+          status.textContent = msg.count === 0
+            ? 'No matches found.'
+            : `${msg.count} match${msg.count === 1 ? '' : 'es'} found.`;
+        } else {
+          status.textContent = msg.count === 0
+            ? 'No matches to replace.'
+            : `Replaced ${msg.count} occurrence${msg.count === 1 ? '' : 's'} in ${msg.nodes} layer${msg.nodes === 1 ? '' : 's'}.`;
+        }
+      } else if (msg.type === 'term-rules') {
+        // Restore a previously saved ruleset; keep the default if none stored.
+        if (msg.rules && msg.rules.trim()) {
+          document.getElementById('termRules').value = msg.rules;
+        }
+      } else if (msg.type === 'term-preview-result') {
+        const status = document.getElementById('termStatus');
+        const preview = document.getElementById('termPreview');
+        const violationsList = document.getElementById('termViolationsList');
+
+        if (msg.noScope) {
+          status.textContent = msg.message || 'No text layers found in scope.';
+          preview.style.display = 'none';
+          return;
+        }
+
+        if (msg.totalViolations === 0) {
+          status.textContent = 'No terminology issues found. ✓';
+          preview.style.display = 'none';
+          return;
+        }
+
+        // Show preview panel
+        status.textContent = '';
+        document.getElementById('termViolationCount').textContent = msg.totalViolations;
+        violationsList.innerHTML = '';
+
+        // Render each violation
+        msg.violations.forEach((violation) => {
+          const violDiv = document.createElement('div');
+          violDiv.className = 'term-violation';
+          violDiv.style.cssText = 'padding: 10px; margin: 8px 0; border: 1px solid #e8e8e8; border-radius: 4px; background: #fafafa;';
+
+          const checkbox = document.createElement('input');
+          checkbox.type = 'checkbox';
+          checkbox.className = 'term-violation-checkbox';
+          checkbox.dataset.id = violation.layerId;
+          checkbox.checked = violation.editable;
+          checkbox.disabled = !violation.editable;
+
+          const checkboxLabel = document.createElement('label');
+          checkboxLabel.style.cssText = 'display: flex; align-items: flex-start; gap: 8px; margin: 0; cursor: pointer;';
+          checkboxLabel.appendChild(checkbox);
+
+          const layerInfo = document.createElement('div');
+          layerInfo.style.cssText = 'flex: 1;';
+
+          const layerName = document.createElement('div');
+          layerName.style.cssText = 'font-weight: 500; color: #1a1a1a; font-size: 12px;';
+          layerName.textContent = escapeHtml(violation.layerName);
+          layerInfo.appendChild(layerName);
+
+          if (violation.frameName) {
+            const frameName = document.createElement('div');
+            frameName.style.cssText = 'font-size: 11px; color: #888; margin-top: 2px;';
+            frameName.textContent = `(${escapeHtml(violation.frameName)})`;
+            layerInfo.appendChild(frameName);
+          }
+
+          checkboxLabel.appendChild(layerInfo);
+
+          const textInfo = document.createElement('div');
+          textInfo.style.cssText = 'margin-top: 8px; padding-top: 8px; border-top: 1px solid #e8e8e8;';
+
+          const original = document.createElement('div');
+          original.style.cssText = 'font-size: 11px; color: #666; margin-bottom: 4px;';
+          original.innerHTML = '<strong>Found:</strong> <span style="font-style: italic; color: #d9534f;">' +
+            escapeHtml(violation.term) +
+            '</span>';
+          textInfo.appendChild(original);
+
+          const suggestion = document.createElement('div');
+          suggestion.style.cssText = 'font-size: 11px; color: #666;';
+          suggestion.innerHTML = '<strong>Replace with:</strong> <span style="font-style: italic; color: #0066cc;">' +
+            escapeHtml(violation.suggestion) +
+            '</span>';
+          textInfo.appendChild(suggestion);
+
+          if (!violation.editable && violation.skipReason) {
+            const skipInfo = document.createElement('div');
+            skipInfo.style.cssText = 'font-size: 11px; color: #d9534f; margin-top: 6px; font-weight: 500;';
+            skipInfo.textContent = '⚠ ' + (violation.skipReason === 'locked' ? 'Layer is locked' : 'Cannot edit: ' + escapeHtml(violation.skipReason));
+            textInfo.appendChild(skipInfo);
+          }
+
+          violDiv.appendChild(checkboxLabel);
+          violDiv.appendChild(textInfo);
+          violationsList.appendChild(violDiv);
+        });
+
+        preview.style.display = 'block';
+      } else if (msg.type === 'term-result') {
+        const status = document.getElementById('termStatus');
+        if (msg.noScope) {
+          status.textContent = 'No text layers found in scope.';
+          document.getElementById('termResults').innerHTML = '';
+        } else if (msg.mode === 'scan') {
+          status.textContent = msg.count === 0
+            ? 'No terminology issues found. ✓'
+            : `${msg.count} issue${msg.count === 1 ? '' : 's'} found across ${msg.violations.length} layer-rule match${msg.violations.length === 1 ? '' : 'es'}.`;
+          renderTermViolations(msg.violations);
+        } else {
+          status.textContent = msg.count === 0
+            ? 'No terms to fix.'
+            : `Fixed ${msg.count} term${msg.count === 1 ? '' : 's'} in ${msg.nodes} layer${msg.nodes === 1 ? '' : 's'}.`;
+          document.getElementById('termResults').innerHTML = '';
+        }
+      } else if (msg.type === 'localization-preview-result') {
+        const status = document.getElementById('localizeStatus');
+        const preview = document.getElementById('locPreview');
+        const locList = document.getElementById('locPreviewList');
+
+        if (msg.noScope) {
+          status.textContent = msg.message || 'No text layers found in scope.';
+          preview.style.display = 'none';
+          return;
+        }
+
+        if (msg.totalLocalizations === 0) {
+          status.textContent = 'No text to localize.';
+          preview.style.display = 'none';
+          return;
+        }
+
+        // Show preview panel
+        status.textContent = '';
+        document.getElementById('locCount').textContent = msg.totalLocalizations;
+        locList.innerHTML = '';
+
+        // Render each localization
+        msg.localizations.forEach((loc) => {
+          const locDiv = document.createElement('div');
+          locDiv.style.cssText = 'padding: 10px; margin: 8px 0; border: 1px solid #e8e8e8; border-radius: 4px; background: #fafafa;';
+
+          const checkbox = document.createElement('input');
+          checkbox.type = 'checkbox';
+          checkbox.className = 'loc-checkbox';
+          checkbox.dataset.layerId = loc.layerId;
+          checkbox.checked = loc.editable;
+          checkbox.disabled = !loc.editable;
+
+          const checkboxLabel = document.createElement('label');
+          checkboxLabel.style.cssText = 'display: flex; align-items: flex-start; gap: 8px; margin: 0; cursor: pointer;';
+          checkboxLabel.appendChild(checkbox);
+
+          const layerInfo = document.createElement('div');
+          layerInfo.style.cssText = 'flex: 1;';
+
+          const layerName = document.createElement('div');
+          layerName.style.cssText = 'font-weight: 500; color: #1a1a1a; font-size: 12px;';
+          layerName.textContent = escapeHtml(loc.layerName);
+          layerInfo.appendChild(layerName);
+
+          if (loc.frameName) {
+            const frameName = document.createElement('div');
+            frameName.style.cssText = 'font-size: 11px; color: #888; margin-top: 2px;';
+            frameName.textContent = `(${escapeHtml(loc.frameName)})`;
+            layerInfo.appendChild(frameName);
+          }
+
+          checkboxLabel.appendChild(layerInfo);
+
+          const textInfo = document.createElement('div');
+          textInfo.style.cssText = 'margin-top: 8px; padding-top: 8px; border-top: 1px solid #e8e8e8;';
+
+          const original = document.createElement('div');
+          original.style.cssText = 'font-size: 11px; color: #666; margin-bottom: 4px;';
+          original.innerHTML = '<strong>Original:</strong> <span style="font-style: italic;">' +
+            escapeHtml(loc.original.length > 50 ? loc.original.substring(0, 50) + '…' : loc.original) +
+            '</span>';
+          textInfo.appendChild(original);
+
+          const proposed = document.createElement('div');
+          proposed.style.cssText = 'font-size: 11px; color: #666; margin-bottom: 6px;';
+          proposed.innerHTML = '<strong>Proposed:</strong> <span style="font-style: italic; color: #0066cc;">' +
+            escapeHtml(loc.proposed.length > 50 ? loc.proposed.substring(0, 50) + '…' : loc.proposed) +
+            '</span>';
+          textInfo.appendChild(proposed);
+
+          // Expansion percentage
+          const expansionColor = loc.expansionPercent > 30 ? '#d9534f' : loc.expansionPercent < -20 ? '#5cb85c' : '#666';
+          const expansion = document.createElement('div');
+          expansion.style.cssText = `font-size: 11px; color: ${expansionColor}; font-weight: 500; margin-bottom: 6px;`;
+          expansion.textContent = loc.expansionPercent >= 0
+            ? `+${loc.expansionPercent}% length`
+            : `${loc.expansionPercent}% length`;
+          textInfo.appendChild(expansion);
+
+          // Warnings
+          if (loc.warnings && loc.warnings.length > 0) {
+            const warningsDiv = document.createElement('div');
+            warningsDiv.style.cssText = 'display: flex; gap: 4px; flex-wrap: wrap; margin-top: 6px;';
+            loc.warnings.forEach(warning => {
+              const badge = document.createElement('span');
+              badge.style.cssText = 'font-size: 10px; padding: 2px 6px; border-radius: 3px; background: #fff3cd; color: #856404;';
+              badge.textContent = warning;
+              warningsDiv.appendChild(badge);
+            });
+            textInfo.appendChild(warningsDiv);
+          }
+
+          if (!loc.editable && loc.skipReason) {
+            const skipInfo = document.createElement('div');
+            skipInfo.style.cssText = 'font-size: 11px; color: #d9534f; margin-top: 6px; font-weight: 500;';
+            skipInfo.textContent = '⚠ ' + (loc.skipReason === 'locked' ? 'Layer is locked' : 'Cannot edit: ' + escapeHtml(loc.skipReason));
+            textInfo.appendChild(skipInfo);
+          }
+
+          locDiv.appendChild(checkboxLabel);
+          locDiv.appendChild(textInfo);
+          locList.appendChild(locDiv);
+        });
+
+        preview.style.display = 'block';
+      } else if (msg.type === 'localization-result') {
+        const status = document.getElementById('localizeStatus');
+        if (msg.noScope) {
+          status.textContent = 'No text layers found in scope.';
+        } else {
+          status.textContent = msg.count === 0
+            ? 'No text to localize.'
+            : `Applied localization to ${msg.count} layer${msg.count === 1 ? '' : 's'}.`;
+        }
+        closeLocPreview();
+      } else if (msg.type === 'counter-result') {
+        const status = document.getElementById('counterStatus');
+        const results = document.getElementById('counterResults');
+        if (msg.noScope) {
+          status.textContent = msg.message || 'No text layers found in scope.';
+          results.innerHTML = '';
+        } else {
+          status.textContent = '';
+
+          // Get character limit and highlight option
+          const charLimit = parseInt(document.getElementById('counterLimit').value) || null;
+          const highlightOver = document.getElementById('counterHighlightOver').checked;
+
+          // Build summary section
+          let summaryHtml = `
+            <div class="summary-block">
+              <div class="summary-title">📊 Summary</div>
+              <div class="summary-row">
+                <span>Characters</span>
+                <span>${msg.chars.toLocaleString()}</span>
+              </div>
+              <div class="summary-row">
+                <span>Words</span>
+                <span>${msg.words.toLocaleString()}</span>
+              </div>
+          `;
+
+          if (charLimit) {
+            summaryHtml += `
+              <div class="summary-row" style="border-top: 1px solid #e8e8e8; padding-top: 8px; margin-top: 8px;">
+                <span>Limit</span>
+                <span>${charLimit.toLocaleString()}</span>
+              </div>
+            `;
+          }
+
+          summaryHtml += `</div>`;
+
+          // Build per-layer section
+          let layersHtml = '';
+          if (msg.layerCounts && msg.layerCounts.length > 0) {
+            layersHtml = `
+              <div class="summary-block" style="margin-top: 12px;">
+                <div class="summary-title">📋 Details by Layer</div>
+                <div style="max-height: 300px; overflow-y: auto;">
+            `;
+
+            msg.layerCounts.forEach((item, index) => {
+              const isOver = charLimit && item.chars > charLimit;
+              const highlightClass = isOver && highlightOver ? ' style="background: #fff3cd; border-left: 3px solid #ffc107; padding-left: 6px;"' : '';
+
+              const frameName = item.layer.frameName ? ` (${item.layer.frameName})` : '';
+              const layerName = item.layer.name || 'Unnamed';
+
+              layersHtml += `
+                <div class="summary-row" style="padding: 8px 0; font-size: 12px; align-items: flex-start;"${highlightClass}>
+                  <div style="flex: 1;">
+                    <div style="font-weight: 500; color: #1a1a1a;">${escapeHtml(layerName)}</div>
+                    <div style="font-size: 11px; color: #888; margin-top: 2px;">${escapeHtml(frameName)}</div>
+              `;
+
+              if (item.layer.text && item.layer.text.length > 0) {
+                const preview = item.layer.text.length > 40
+                  ? item.layer.text.substring(0, 40) + '…'
+                  : item.layer.text;
+                layersHtml += `<div style="font-size: 11px; color: #666; margin-top: 4px; font-style: italic;">\"${escapeHtml(preview)}\"</div>`;
+              }
+
+              layersHtml += `
+                  </div>
+                  <div style="text-align: right; min-width: 80px;">
+                    <div style="font-size: 12px; color: #1a1a1a;">${item.chars} chars</div>
+                    <div style="font-size: 11px; color: #888;">${item.words} words</div>
+              `;
+
+              if (isOver && highlightOver) {
+                layersHtml += `<div style="font-size: 11px; color: #d9534f; font-weight: 500; margin-top: 2px;">⚠ Over</div>`;
+              }
+
+              layersHtml += `
+                  </div>
+                </div>
+              `;
+            });
+
+            layersHtml += `
+                </div>
+              </div>
+            `;
+          }
+
+          results.innerHTML = summaryHtml + layersHtml;
+        }
+        document.getElementById('counterBtn').disabled = false;
+      } else if (msg.type === 'api-key') {
+        updateApiKeyUI(msg.key ? true : false);
+      } else if (msg.type === 'styleguide') {
+        currentStyleguide = msg.styleguide || 'shopify';
+        currentCustomRules = msg.customRules || '';
+        document.getElementById('styleguideSelect').value = currentStyleguide;
+        if (currentStyleguide === 'custom') {
+          document.getElementById('customStyleguideSection').classList.remove('hidden');
+          document.getElementById('customStyleguide').value = currentCustomRules;
+        } else {
+          document.getElementById('customStyleguideSection').classList.add('hidden');
+        }
+      } else if (msg.type === 'accessibility-elements') {
+        renderAccessibilityElements(msg.elements);
+      } else if (msg.type === 'accessibility-saved') {
+        document.getElementById('saveAccessibilityBtn').disabled = false;
+        document.getElementById('accessibilityStatus').textContent = `Saved labels for ${msg.saved} element(s).`;
+        setTimeout(() => {
+          document.getElementById('accessibilityStatus').textContent = '';
+        }, 3000);
+      }
+    };
+
+  </script>
+</body>
+</html>
