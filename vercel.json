@@ -5,5 +5,19 @@
       "maxDuration": 60
     }
   },
-  "outputDirectory": "."
+  "outputDirectory": ".",
+  "rewrites": [
+    {
+      "source": "/manifest.json",
+      "destination": "/manifest.json"
+    },
+    {
+      "source": "/code.js",
+      "destination": "/code.js"
+    },
+    {
+      "source": "/ui.html",
+      "destination": "/ui.html"
+    }
+  ]
 }
